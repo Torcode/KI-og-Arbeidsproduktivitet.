@@ -1,0 +1,19 @@
+# R session artifacts
+.RData
+.RDataTmp
+.Rhistory
+.Rproj.user/
+
+# Quarto render output
+*_cache/
+*_files/
+*.pdf
+*.html
+
+# Large/regenerable data files (re-fetch from Eurostat API)
+data/*.rds
+data/raw/
+
+# Misc
+ai.csv
+output/

@@ -1,0 +1,1099 @@
+---
+title: "Kunstig intelligens og arbeidsproduktivitet: Evidens fra europeiske næringer"
+author: "Torkild Søren Sogge Moen"
+date: "`r Sys.Date()`"
+output: 
+  pdf_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+    df_print: kable
+    latex_engine: xelatex
+geometry: margin=1in
+fontsize: 12pt
+linestretch: 1.5
+bibliography: ai_source.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,        # Skjul kode i hovedtekst
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 7,
+  fig.height = 4.5
+)
+```
+
+```{r bibliotek, include=FALSE}
+library(eurostat)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(janitor)
+library(ggplot2)
+library(knitr)
+library(readr)
+library(here)
+library(fixest)
+library(frontier)
+library(modelsummary)
+```
+
+\newpage
+
+# Introduksjon
+
+```{=html}
+<!-- PLACEHOLDER: Introduksjonen skrives til slutt, når resten av oppgaven er ferdig.
+     Nåværende utkast beholdes og revideres som siste steg.
+     Forskningsspørsmål: Gir høyere KI-intensitet sterkere produktivitetsvekst 
+     i europeiske næringer? -->
+```
+
+Kunstig intelligens (KI) har på kort tid blitt et sentralt tema i diskusjonen om fremtidig produktivitetsvekst, organisering av arbeid og konkurranseevne. Teknologien omtales ofte som en general-purpose technology fordi den kan tas i bruk på tvers av oppgaver, virksomheter og næringer (Brynjolfsson & McAfee, 2014; Agrawal et al., 2019). Samtidig er det betydelig usikkerhet knyttet til hvor store de samlede økonomiske gevinstene faktisk vil bli. I den offentlige debatten varierer anslagene fra transformative makroøkonomiske effekter til mer moderate produktivitetsbidrag, og den empiriske litteraturen gir foreløpig ikke grunnlag for entydige konklusjoner.
+
+Spennet i prognosene illustrerer denne usikkerheten. Goldman Sachs anslår at generativ KI kan øke globalt BNP med 7 prosent over en tiårsperiode (Hatzius et al., 2023), mens McKinsey estimerer et årlig verdiskapingspotensial på 17–26 billioner dollar (Chui et al., 2023). I den andre enden av skalaen bruker Acemoglu (2024) sitt oppgavebaserte rammeverk til å beregne at KI kan øke total faktorproduktivitet (TFP) i USA med om lag 0,66 prosent over de neste ti årene. Spriket mellom prognosene reflekterer ulike antakelser om hvor stor andel av økonomiens oppgaver som faktisk kan automatiseres lønnsomt, hvor store kostnadsbesparelser som vil realiseres, teknologiens evne til å skape innovasjon, og spredningsomfanget.
+
+En viktig grunn til denne usikkerheten er at produktivitetseffekter av ny teknologi ikke nødvendigvis materialiserer seg umiddelbart i aggregert statistikk. Dette er nært knyttet til det klassiske produktivitetsparadokset og til ideen om en produktivitets-J-kurve (Brynjolfsson et al., 2021): nye generelle teknologier krever ofte komplementære investeringer i organisering, kompetanse og immateriell kapital før gevinstene blir synlige i målte produktivitetstall. Historiske paralleller understøtter dette mønsteret. Da elektrisitet ble kommersielt tilgjengelig rundt 1890, tok det nærmere tre tiår før produktivitetseffektene viste seg i industristatistikken — først da fabrikker ble redesignet rundt den nye energikilden (David, 1990). IT-revolusjonen viste en tilsvarende forsinkelse fra introduksjonen av personlige datamaskiner tidlig på 1980-tallet til produktivitetsboomen fra midten av 1990-tallet. Robert Solow fanget dette paradokset allerede i 1987: «Du kan se datamaskinalderen overalt, bortsett fra i produktivitetsstatistikken» (Solow, 1987).
+
+Den empiriske litteraturen om KI og produktivitet opererer på ulike analysenivåer, og resultatene avhenger i stor grad av nivået. Mye av den tidlige empirien for generativ KI er hentet fra avgrensede oppgaver og spesifikke arbeidsprosesser. Noy og Zhang (2023) finner i et randomisert eksperiment at tilgang til ChatGPT reduserer tidsbruken med 40 prosent og øker kvaliteten med 18 prosent i profesjonelle skriveoppgaver. Brynjolfsson et al. (2023) dokumenterer en 15 prosent økning i produktivitet blant kundeservicemedarbeidere med tilgang til et generativt KI-verktøy. Slike studier finner ofte betydelige produktivitetsgevinster, men de sier mindre om hvordan effektene akkumuleres på nærings- eller makronivå — et spørsmål som er sentralt for å vurdere KIs samlede økonomiske betydning.
+
+På bedriftsnivå har Czarnitzki et al. (2023) brukt tyske bedriftsdata med instrumentvariabelestimering og funnet en positiv og signifikant sammenheng mellom KI-adopsjon og bedriftsproduktivitet. Gao og Feng (2023) finner tilsvarende resultater med kinesiske industridata. På makro- og sektornivå er den empiriske evidensen mer begrenset. Den tidlige IKT-litteraturen har brukt stokastisk frontanalyse (SFA) til å studere teknologiens rolle som ineffektivitetsdeterminant i europeiske og amerikanske næringer (Dimelis & Papaioannou, 2011; Mastromarco et al., 2018). Denne oppgaven viderefører denne tilnærmingen ved å undersøke om KI-adopsjon — målt direkte gjennom Eurostats IKT-undersøkelse — er assosiert med høyere teknisk effektivitet og arbeidsproduktivitet i europeiske næringer.
+
+Forskningsspørsmålet er: **Gir høyere KI-intensitet sterkere produktivitetsvekst i europeiske næringer?** Mer presist undersøkes to hypoteser. For det første: er høyere KI-adopsjon assosiert med lavere teknisk ineffektivitet — altså produksjon nærmere den estimerte fronten? For det andre: varierer denne assosiasjonen med type KI-teknologi, og er det maskinlæring eller generativ KI som driver produktivitetssammenhengen?
+
+```{=html}
+<!-- TODO: Etter at resten er ferdig, utvid introduksjonen med:
+     - Kort om exposure-litteraturen (Eloundou et al. 2024, Felten et al. 2021)
+     - Hvordan oppgaven bidrar (SFA + Eurostat-data = nytt)
+     - Disposisjon/veikart for oppgaven -->
+```
+
+\newpage
+
+# Teori
+
+Kapittelet presenterer det teoretiske rammeverket for analysen. Utgangspunktet er den neoklassiske produksjonsfunksjonen og definisjonen av arbeidsproduktivitet. Acemoglus (2024) oppgavebaserte rammeverk gir den teoretiske konteksten for hvordan KI kan påvirke produktiviteten. Stokastisk frontanalyse — oppgavens hovedmetode — presenteres deretter som en økonometrisk tilnærming som skiller mellom produktivitetspotensialet (fronten) og avstanden til dette potensialet (ineffektiviteten). Panel fixed effects presenteres som en komplementær robusthetssjekk.
+
+## Produksjonsteori og arbeidsproduktivitet
+
+Utgangspunktet for analysen er den neoklassiske produksjonsfunksjonen, som beskriver sammenhengen mellom innsatsfaktorer og output. For en sektor $i$ i land $c$ på tidspunkt $t$ kan output skrives som:
+
+$$Y_{ict} = A_{ict} \cdot F(L_{ict}, K_{ict})$$
+
+der $Y_{ict}$ er brutto verdiskaping (GVA), $A_{ict}$ er total faktorproduktivitet (TFP), $L_{ict}$ er arbeidsinnsats (målt i tusen timeverk) og $K_{ict}$ er kapitalbeholdningen (netto fast realkapital i millioner euro, kjedede 2020-volumer). TFP fanger opp alt som påvirker output utover det som kan tilskrives økning i mengden arbeid og kapital — herunder teknologisk nivå, organisatorisk effektivitet og institusjonelle forhold.
+
+Den mest brukte spesifikasjonen er Cobb-Douglas:
+
+$$Y_{ict} = A_{ict} \cdot L_{ict}^{\alpha} \cdot K_{ict}^{\beta}$$
+
+der $\alpha$ og $\beta$ er produksjonselastisitetene for henholdsvis arbeid og kapital. Dersom $\alpha + \beta = 1$, har vi konstant skalautbytte (CRS). I log-lineær form gir dette:
+
+$$\ln Y_{ict} = \ln A_{ict} + \alpha \ln L_{ict} + \beta \ln K_{ict}$$
+
+Denne spesifikasjonen — med output som avhengig variabel og arbeid og kapital som separate forklaringsvariabler — er grunnlaget for den stokastiske frontanalysen i denne oppgaven.
+
+Arbeidsproduktivitet defineres som output per enhet arbeidsinnsats: $LP_{ict} = Y_{ict} / L_{ict}$. I log-form kan dette uttrykkes som $\ln LP_{ict} = \ln A_{ict} + (\alpha - 1) \ln L_{ict} + \beta \ln K_{ict}$. Med konstant skalautbytte forenkles dette til $\ln LP_{ict} = \ln A_{ict} + \beta \ln(K_{ict}/L_{ict})$, der arbeidsproduktiviteten bestemmes av TFP og kapitalintensiteten. Denne intensitetsformen brukes i robusthetssjekker med panel fixed effects, men ikke som hovedspesifikasjon — dels fordi CRS-antakelsen er empirisk testbar (og testes i analysen), dels fordi output-formen unngår det potensielle problemet med at arbeidsinnsats inngår på begge sider av ligningen (Borjas, 1980; Kronmal, 1993).
+
+TFP beregnes som en residual — den delen av outputveksten som ikke kan tilskrives vekst i arbeid og kapital (Solow, 1957). Utfordringen med residualen er at den fanger opp alt vi ikke direkte måler, og det er derfor vanskelig å attribuere endringer i TFP til en enkelt faktor som KI. Stokastisk frontanalyse adresserer dette delvis ved å dekomponere avvikene fra potensiell produksjon i støy og systematisk ineffektivitet, der ineffektiviteten kan modelleres som en funksjon av observerbare variabler — i denne oppgaven KI-adopsjon.
+
+## Det oppgavebaserte rammeverket
+
+Acemoglu og Restrepo (2018, 2022) og Acemoglu (2024) utvikler et rammeverk der produksjon forstås som utførelse av et sett oppgaver, snarere enn som en abstrakt kombinasjon av arbeid og kapital. I dette rammeverket produseres et sluttgode $Y$ ved å kombinere output fra et kontinuum av oppgaver $z \in [0, N]$:
+
+$$Y = B(N) \left( \int_0^N y(z)^{\frac{\sigma-1}{\sigma}} dz \right)^{\frac{\sigma}{\sigma-1}}$$
+
+der $y(z)$ er output fra oppgave $z$, $\sigma \geq 0$ er substitusjonselastisiteten mellom oppgaver, og $B(N)$ fanger opp systemeffekter av nye oppgaver. Acemoglu antar $\sigma \approx 0{,}5$, slik at oppgavene er komplementære — produksjonen er begrenset av den svakeste oppgaven.
+
+Hver oppgave kan utføres av enten arbeidskraft eller kapital (inkludert KI): $y(z) = A_L \gamma_L(z) l(z) + A_K \gamma_K(z) k(z)$, der $A_L$ og $A_K$ er faktorspesifikke produktivitetsparametre, $\gamma_L(z)$ og $\gamma_K(z)$ er oppgavespesifikke produktivitetsprofiler, og $l(z)$ og $k(z)$ er innsatsen av arbeid og kapital i oppgave $z$. Innenfor en oppgave er arbeid og kapital perfekte substitutter, men de har ulik komparativ fordel på tvers av oppgaver.
+
+I dette rammeverket kan KI påvirke produktiviteten gjennom fire distinkte kanaler (Acemoglu, 2024). *Automatisering* innebærer at KI overtar oppgaver som tidligere ble utført av arbeidskraft — for eksempel tekstsammendrag, dataklassifisering og mønstergjenkjenning. *Oppgavekomplementaritet* oppstår når KI øker produktiviteten i oppgaver som ikke automatiseres fullt ut, for eksempel gjennom bedre informasjonsgrunnlag eller raskere tilbakemelding. *Fordypning av eksisterende automatisering* innebærer at KI forbedrer ytelsen i oppgaver som allerede er automatisert. *Nye oppgaver* kan oppstå som følge av KI og potensielt forbedre hele produksjonsprosessen. Acemoglu (2024) fokuserer primært på de to første kanalene for generativ KI.
+
+Den samlede TFP-effekten kan uttrykkes som en vektet sum av kostnadsbesparelser på oppgavenivå: $d \ln \text{TFP} = \int_0^N \chi(z) \pi_L(z) dz$, der $\chi(z)$ er BNP-andelen til oppgave $z$ (Domar-vekten) og $\pi_L(z)$ er kostnadsbesparelsen drevet av KI. Acemoglu (2024) kalibrerer dette med data fra Eloundou et al. (2024) og eksperimentstudier og anslår at KI kan øke TFP med 0,66 prosent over ti år — et vesentlig mer moderat anslag enn Goldman Sachs eller McKinsey. Denne oppgaven opererer på sektornivå snarere enn oppgavenivå, men det oppgavebaserte rammeverket gir den teoretiske konteksten: sektorer med flere oppgaver som kan støttes eller automatiseres av KI forventes å oppleve sterkere produktivitetseffekter. At sektornivåanalyse er meningsfull følger fra Hultens teorem (1978), som fastslår at et TFP-sjokk til en sektor bidrar til aggregert BNP proporsjonalt med sektorens salgsandel.
+
+## Stokastisk frontanalyse
+
+Stokastisk frontanalyse (SFA), introdusert uavhengig av Aigner, Lovell og Schmidt (1977) og Meeusen og van den Broeck (1977), er en økonometrisk metode for å estimere en produksjonsfront og samtidig dekomponere avvik fra fronten i to komponenter: tilfeldig støy og systematisk ineffektivitet. Metoden er valgt som hovedtilnærming fordi den — i motsetning til standard regresjon — kan skille mellom to distinkte spørsmål: (1) hva bestemmer potensiell produksjon (fronten), og (2) hva bestemmer avstanden mellom faktisk og potensiell produksjon (ineffektiviteten). IKT-litteraturen har vist at teknologi primært påvirker produktiviteten gjennom den andre kanalen. Dimelis og Papaioannou (2011, 2017) og Mastromarco et al. (2018) finner at IKT reduserer teknisk ineffektivitet snarere enn å flytte fronten direkte — digitalisering hjelper næringer å utnytte eksisterende produksjonspotensial bedre. Denne oppgaven tester om det samme gjelder for KI.
+
+### Grunnmodellen
+
+I log-lineær Cobb-Douglas-form skrives SFA-modellen som:
+
+$$\ln Y_{it} = \beta_0 + \beta_L \ln L_{it} + \beta_K \ln K_{it} + v_{it} - u_{it}$$
+
+der $v_{it} \sim N(0, \sigma_v^2)$ er et symmetrisk feilledd som fanger opp tilfeldig støy (målefeil, tilfeldige sjokk), og $u_{it} \geq 0$ er et ikke-negativt ineffektivitetsledd som representerer avstanden fra den estimerte produksjonsfronten. Teknisk effektivitet for observasjon $it$ defineres som $TE_{it} = \exp(-u_{it}) \in (0, 1]$, der $TE_{it} = 1$ innebærer full effektivitet (produksjon på fronten).
+
+Identifikasjonen hviler på fordelingsantakelsene: fordi $u$ bare kan være ikke-negativ, blir det sammensatte feilleddet $\varepsilon = v - u$ venstreskjevt. Denne skjevheten identifiserer den relative størrelsen på ineffektivitetskomponenten. Maximum likelihood estimerer begge fordelingene simultant.
+
+### Variasjonsparameteren gamma
+
+Et sentralt diagnosemål er parameteren $\gamma = \sigma_u^2 / (\sigma_v^2 + \sigma_u^2) \in [0, 1]$, som uttrykker andelen av total varians som kan tilskrives ineffektivitet. Dersom $\gamma \approx 0$ dominerer tilfeldig støy og SFA kollapser til OLS — det finnes lite systematisk ineffektivitet å forklare. Dersom $\gamma$ er signifikant forskjellig fra null, tilfører SFA informasjon som standard regresjon ikke fanger. Den formelle testen for $H_0: \gamma = 0$ følger en blandet kjikvadratfordeling $\frac{1}{2}\chi^2(0) + \frac{1}{2}\chi^2(1)$ med kritisk verdi 2,706 på 5-prosentnivå (Kodde & Palm, 1986; Coelli, 1995). Denne testen rapporteres i resultatkapittelet og fungerer som modellseleksjonskriterium: et signifikant gamma legitimerer SFA-tilnærmingen.
+
+### Battese–Coelli (1995): ineffektivitetsdeterminanter
+
+I den grunnleggende SFA-modellen er ineffektiviteten en uforklart residual. Battese og Coelli (1995) utvider modellen til å tillate at ineffektiviteten er en funksjon av observerbare variabler:
+
+$$u_{it} = z_{it}' \delta + w_{it}, \quad w_{it} \geq -z_{it}' \delta$$
+
+der $z_{it}$ er en vektor av variabler som kan forklare variasjon i ineffektivitet — i denne oppgaven KI-adopsjon — $\delta$ er koeffisientvektoren, og $w_{it}$ er et residualt støyledd. Fronten og ineffektivitetsligningen estimeres simultant med maximum likelihood. Tolkningen er:
+
+Dersom $\delta_{\text{KI}} < 0$: høyere KI-adopsjon er assosiert med lavere ineffektivitet, altså høyere teknisk effektivitet $TE = \exp(-u)$. Dersom $\delta_{\text{KI}} > 0$: høyere KI-adopsjon er assosiert med høyere ineffektivitet, som kan reflektere implementeringskostnader eller omorganisering i en tidlig adopsjonsfase.
+
+Det er viktig å presisere at $\delta_{\text{KI}}$ *ikke* er en produksjonselastisitet. Den beskriver ikke hvordan KI påvirker potensiell output (fronten), men hvordan KI samvarierer med avstanden mellom faktisk og potensiell produksjon. Begrunnelsen for å plassere KI i ineffektivitetsligningen snarere enn i fronten er at KI — i den aktuelle fasen av adopsjon — sannsynligvis påvirker produktiviteten gjennom prosessforbedring, bedre beslutningsstøtte og mer effektiv koordinering, snarere enn gjennom å fundamentalt endre produksjonsteknologien. Dette er konsistent med funnene fra IKT-litteraturen.
+
+## Panel fixed effects som robusthetssjekk
+
+SFA er den primære tilnærmingen, men resultater fra en enkelt metode kan reflektere modellspesifikke antakelser — i SFAs tilfelle fordelingsantakelsene for ineffektivitetsleddet. Panel fixed effects (FE) estimeres derfor som en komplementær robusthetssjekk som ikke krever disse antakelsene.
+
+Hovedspesifikasjonen for FE er output-formen, identisk med SFA-fronten:
+
+$$\ln Y_{ict} = \alpha_c + \mu_i + \tau_t + \beta_1 \text{KI}_{ict} + \beta_L \ln L_{ict} + \beta_K \ln K_{ict} + \varepsilon_{ict}$$
+
+der $\alpha_c$, $\mu_i$ og $\tau_t$ er faste effekter for henholdsvis land, sektor og år. Denne spesifikasjonen bruker de *samme variablene* som SFA, noe som gjør koeffisientene direkte sammenlignbare. Forskjellen er at FE behandler all uforklart variasjon som ett feilledd ($\varepsilon$), mens SFA dekomponerer det i støy ($v$) og ineffektivitet ($u$). Dersom KI-koeffisienten har samme fortegn og størrelsesorden i begge tilnærminger, styrker det tilliten til resultatet.
+
+Som ytterligere robusthetssjekk estimeres også intensitetsformen $\ln LP_{ict} = \alpha_c + \mu_i + \tau_t + \beta_1 \text{KI}_{ict} + \beta_2 \ln(K_{ict}/L_{ict}) + \varepsilon_{ict}$, der arbeidsproduktivitet er avhengig variabel og kapitalintensitet kontrollvariabel. Denne formen er algebraisk ekvivalent med output-formen under konstant skalautbytte, men unngår å inkludere alle tre produksjonskomponenter i samme ligning. CRS-antakelsen testes formelt i analysen.
+
+De faste effektene absorberer all tidskonstant uobservert heterogenitet mellom land (institusjoner, regulering, arbeidsmarkedsstruktur) og mellom sektorer (teknologisk nivå, kapitalintensitet, konkurransestruktur). Tidsfaste effekter fanger sjokk som er felles for alle land og sektorer i et gitt år. Alle standardfeil klustres på landnivå for å tillate vilkårlig korrelasjon mellom observasjoner innenfor samme land.
+
+## Oppsummering av identifikasjonsstrategi
+
+Analysen bygger på to komplementære tilnærminger som svarer på ulike spørsmål:
+
+SFA (Battese-Coelli 1995) er hovedmodellen og svarer på: *Er høyere KI-adopsjon assosiert med lavere teknisk ineffektivitet — altså produksjon nærmere den estimerte fronten?* Metoden dekomponerer avvik fra potensiell produksjon i støy og systematisk ineffektivitet, der KI modelleres som en ineffektivitetsdeterminant. Panel FE med additive land-, sektor- og tidsfaste effekter er robusthetssjekken og svarer på: *Er KI-adopsjon assosiert med høyere output, kontrollert for innsatsfaktorer og uobservert heterogenitet?* Metoden stiller færre fordelingsantakelser.
+
+Ingen av tilnærmingene identifiserer kausale effekter i streng forstand. Sektornivådata er for aggregert til å kontrollere for alle konfunderende faktorer, KI-variabelen fanger den ekstensive marginen (om foretaket bruker KI, ikke hvor intensivt), og tidsserien er kort (tre år). Identifikasjonsutfordringene — herunder seleksjon inn i KI-adopsjon og uobservert sektorheterogenitet — diskuteres ytterligere i resultatkapittelet. Det empiriske bidraget ligger i å dokumentere systematiske assosiasjoner i et bredt europeisk panel ved hjelp av en metode (SFA) som er veletablert i IKT-litteraturen men som ikke tidligere er anvendt på KI-adopsjon.
+
+\newpage
+
+# Data
+
+Datagrunnlaget er hentet fra Eurostat, EUs statistiske kontor, som koordinerer innsamlingen av offisiell statistikk fra de nasjonale statistikkbyråene i EU-medlemsland og assosierte land. Analysen kobler fire tabeller som dekker KI-adopsjon, brutto verdiskaping, arbeidsinnsats og kapitalbeholdning — alle etter næring og land — til et paneldatasett for økonometrisk analyse. Tabellene kobles på felles nøkler: land (ISO 3166-1 alpha-2), NACE Rev. 2-næringskode og år. Alle data hentes direkte via Eurostats API gjennom R-pakken `eurostat` (Lahti et al., 2017).
+
+Tabell 1 gir en oversikt over datakildene. Alle variabler er målt i reelle størrelser (kjedede 2020-volumer) der det er relevant, noe som gjør verdiene sammenlignbare over tid og mellom land.
+
+```{r data-oversikt}
+tibble::tribble(
+  ~Tabell, ~Innhold, ~Variabel, ~Enhet, ~Tolkning,
+  "isoc_eb_ain2",   "KI-adopsjon",       "E_AI_TANY", "PC_ENT",     "Andel foretak (≥10 ansatte) som bruker minst én KI-teknologi, i prosent",
+  "nama_10_a64",    "Verdiskaping (GVA)", "B1G",       "CLV20_MEUR", "Brutto verdiskaping i millioner euro, kjedede 2020-volumer",
+  "nama_10_a64_e",  "Arbeidsinnsats",     "EMP_DC",    "THS_HW",     "Total sysselsetting (domestic concept) i tusen timeverk",
+  "nama_10_nfa_st", "Kapitalbeholdning",  "N11N",      "CLV20_MEUR", "Netto fast realkapital i millioner euro, kjedede 2020-volumer"
+) %>%
+  kable(caption = "Oversikt over datakilder fra Eurostat",
+        col.names = c("Eurostat-tabell", "Innhold", "Hovedvariabel", "Enhet", "Tolkning"))
+```
+
+## KI-adopsjon
+
+Datasettet `isoc_eb_ain2` inngår i den årlige fellesskapsundersøkelsen om IKT-bruk i foretak, som har vært gjennomført siden 2002. En egen modul for kunstig intelligens ble inkludert fra 2021, utelatt i 2022, og gjenopptatt som fast modul fra 2023. Datasettet dekker dermed referanseårene 2021, 2023, 2024 og 2025.
+
+```{r ai-hent, cache=TRUE}
+ai_raw <- get_eurostat("isoc_eb_ain2", time_format = "num")
+```
+
+```{r ai-klargjor}
+ai_full <- ai_raw %>%
+  rename(
+    country      = geo,
+    industry     = nace_r2,
+    year         = TIME_PERIOD,
+    ai_indicator = indic_is,
+    measure_unit = unit,
+    value        = values
+  ) %>%
+  select(-freq, -size_emp)
+
+ai_model <- ai_full %>%
+  filter(
+    !country %in% c("EU27_2020", "EA", "EA12", "EA19", "EA20", "EA21"),
+    ai_indicator == "E_AI_TANY",
+    measure_unit == "PC_ENT"
+  ) %>%
+  select(country, industry, year, value) %>%
+  rename(ai_adopt = value)
+```
+
+Hovedindikatoren er `E_AI_TANY`: andelen foretak med minst ti ansatte som bruker minst én av de definerte KI-teknologiene. Variabelen måles som prosent av alle foretak i referansepopulasjonen (`PC_ENT`) og fanger den *ekstensive marginen* — om foretaket bruker KI overhodet, ikke hvor intensivt. Tabellen inneholder i alt 63 indikatorer som dekker teknologityper (maskinlæring, språkgenerering, bildegjenkjenning med flere), bruksområder (markedsføring, produksjon, administrasjon), anskaffelsesform og barrierer mot adopsjon. Teknologispesifikke indikatorer brukes i dekomponeringen i avsnitt 4.3.
+
+Etter filtrering på `E_AI_TANY` og `PC_ENT`, og fjerning av EU- og eurosoneaggregater, gjenstår 34 land. Tidsstrukturen er ujevn: avstanden mellom de to første observasjonene er to år (2021–2023), mens de påfølgende intervallene er ett år. Året 2025 er tilgjengelig for KI men ikke for nasjonalregnskapsdata og ekskluderes derfor fra analysen.
+
+```{r ai-utvikling}
+ai_model %>%
+  filter(!is.na(ai_adopt), year <= 2024) %>%
+  group_by(year) %>%
+  summarise(
+    `Antall obs.` = n(),
+    Gjennomsnitt = round(mean(ai_adopt), 1),
+    Median = round(median(ai_adopt), 1),
+    Std.avvik = round(sd(ai_adopt), 1),
+    .groups = "drop"
+  ) %>%
+  kable(caption = "KI-adopsjon (E\\_AI\\_TANY, prosent av foretak) over tid, alle sektorer og land")
+```
+
+Gjennomsnittlig KI-adopsjon øker fra om lag 9 prosent i 2021 til 18 prosent i 2024 — en dobling over tre år. Akselerasjonen mellom 2023 og 2024 er særlig markant og sammenfaller med den brede spredningen av generative KI-verktøy etter lanseringen av ChatGPT i november 2022.
+
+## Brutto verdiskaping, arbeidsinnsats og kapitalbeholdning
+
+De tre øvrige tabellene er hentet fra Eurostats nasjonalregnskapstabeller under ESA 2010.
+
+```{r nr-hent, cache=TRUE}
+gva_raw <- get_eurostat("nama_10_a64", time_format = "num")
+emp_raw <- get_eurostat("nama_10_a64_e", time_format = "num")
+cap_raw <- get_eurostat("nama_10_nfa_st", time_format = "num")
+```
+
+**Brutto verdiskaping (GVA)** hentes fra `nama_10_a64` og er definert som bruttoproduksjon minus produktinnsats — verdien som skapes i selve produksjonsprosessen. GVA foretrekkes fremfor bruttoproduksjon fordi det ikke blåses opp av mellomprodukthandel. Variabelen måles i kjedede 2020-volumer i millioner euro (`CLV20_MEUR`), som korrigerer for prisendringer over tid og muliggjør sammenligning mellom land i en felles valuta.
+
+```{r gva-klargjor}
+gva_clean <- gva_raw %>%
+  rename(country = geo, industry = nace_r2, year = TIME_PERIOD, value = values) %>%
+  filter(
+    !country %in% c("EU27_2020", "EA", "EA12", "EA19", "EA20", "EA21"),
+    na_item == "B1G",
+    unit == "CLV20_MEUR"
+  ) %>%
+  mutate(industry = case_when(
+    industry == "D" ~ "D35",
+    industry == "L" ~ "L68",
+    TRUE ~ industry
+  )) %>%
+  distinct(country, industry, year, .keep_all = TRUE) %>%
+  select(country, industry, year, value) %>%
+  rename(gva = value) %>%
+  filter(!is.na(gva))
+```
+
+**Arbeidsinnsats** hentes fra `nama_10_a64_e` som total sysselsetting (`EMP_DC`) målt i tusen timeverk (`THS_HW`). Timeverk foretrekkes fremfor antall sysselsatte fordi det fanger forskjeller i arbeidstid mellom land og sektorer — ansatte i norsk industri jobber for eksempel gjennomsnittlig færre timer enn ansatte i polsk industri, en forskjell som reflekteres i timeverksmålet men ikke i persontallet.
+
+```{r emp-klargjor}
+emp_clean <- emp_raw %>%
+  rename(country = geo, industry = nace_r2, year = TIME_PERIOD, value = values) %>%
+  filter(
+    !country %in% c("EU27_2020", "EA", "EA12", "EA19", "EA20", "EA21"),
+    na_item == "EMP_DC",
+    unit == "THS_HW"
+  ) %>%
+  mutate(industry = case_when(
+    industry == "D" ~ "D35",
+    industry == "L" ~ "L68",
+    TRUE ~ industry
+  )) %>%
+  distinct(country, industry, year, .keep_all = TRUE) %>%
+  select(country, industry, year, value) %>%
+  rename(hours = value) %>%
+  filter(!is.na(hours))
+```
+
+**Kapitalbeholdning** hentes fra `nama_10_nfa_st` som netto fast realkapital (`N11N`) — bruttobeholdningen fratrukket akkumulerte avskrivninger. Nettobeholdningen representerer den gjenstående produktive verdien av kapitalen. Bruttobeholdningen ville overvurdere den faktiske kapasiteten fordi den teller fullt ut med også kapital som er betydelig avskrevet. Prisenheten er `CLV20_MEUR`, konsistent med GVA.
+
+```{r cap-klargjor}
+cap_clean <- cap_raw %>%
+  rename(country = geo, industry = nace_r2, year = TIME_PERIOD, value = values) %>%
+  filter(
+    !country %in% c("EU27_2020", "EA", "EA12", "EA19", "EA20", "EA21"),
+    asset10 == "N11N",
+    unit == "CLV20_MEUR"
+  ) %>%
+  mutate(industry = case_when(
+    industry == "D" ~ "D35",
+    industry == "L" ~ "L68",
+    TRUE ~ industry
+  )) %>%
+  distinct(country, industry, year, .keep_all = TRUE) %>%
+  select(country, industry, year, value) %>%
+  rename(capital = value) %>%
+  filter(!is.na(capital), capital > 0)
+```
+
+For GVA, arbeidsinnsats og kapital harmoniseres næringskodene D til D35 og L til L68. KI-tabellen bruker de detaljerte kodene D35 (elektrisitet, gass og varmtvannsforsyning) og L68 (omsetning og drift av fast eiendom), mens nasjonalregnskapstabellene i noen tilfeller rapporterer de bredere seksjonskodene D og L. Fordi seksjon D kun inneholder næring D35 og seksjon L kun inneholder L68, er verdiene identiske — dette er verifisert for alle land.
+
+## Næringsinndeling og panelkonstruksjon
+
+### Valg av næringer
+
+Alle fire tabeller inneholder NACE-koder på flere aggregeringsnivåer som overlapper hverandre. For å bygge et panel uten dobbeltregning trengs et sett næringer som er gjensidig utelukkende og — så langt det lar seg gjøre — uttømmende innenfor IKT-undersøkelsens dekningsområde. Prinsippet er: bruk detaljerte koder der KI-tabellen tilbyr dem, brede seksjonskoder der det er eneste alternativ.
+
+```{r industry-keep}
+industry_keep <- c(
+  "C10-C12", "C13-C15", "C16-C18", "C19", "C20", "C21",
+  "C22_C23", "C24_C25", "C26", "C27", "C28", "C29_C30", "C31-C33",
+  "D35", "E", "F",
+  "G45", "G46", "G47",
+  "H", "I",
+  "J58-J60", "J61", "J62_J63",
+  "L68",
+  "M69-M71", "M72", "M73-M75",
+  "N"
+)
+```
+
+Utvalget består av 29 gjensidig utelukkende næringer: 13 detaljerte industrigrupper (NACE C), 3 handelsgrupper (G), 3 IKT-grupper (J), 3 grupper for faglig tjenesteyting (M), samt forsyning (D35), vann/avfall (E), bygg (F), transport (H), overnatting (I), eiendom (L68) og administrativ tjenesteyting (N). Utvalget ekskluderer primærnæringene (A), bergverk (B), finanssektoren (K — som er utelatt fra hele IKT-undersøkelsen, ikke bare fra KI-modulen), offentlig forvaltning (O–Q) og øvrige tjenesteytende næringer (R–U). Ekskluderingen av finans skyldes at Eurostat ikke samler inn IKT-data fra denne sektoren. Offentlig sektor ekskluderes fordi produktivitetsmåling basert på GVA er lite meningsfull der output i stor grad er basert på kostnadsdekning.
+
+### Imputering av manglende kapitaldata
+
+Kapitaltabellen har lavere dekningsgrad enn de øvrige. For 2021 rapporterer 28 land, men for 2024 har kun 13 land levert data ved skrivingstidspunktet. Norge og Bulgaria mangler fra og med 2023. Denne asymmetrien krever imputering for å unngå at panelet krymper vesentlig når kapital inkluderes.
+
+Kapitalbeholdningen er en treg størrelse — den bestemmes av den akkumulerte investeringshistorien fratrukket avskrivninger, og endrer seg primært gjennom netto investeringer. Median årlig endring i netto kapitalbeholdning er om lag 1,2 prosent, med en interkvartilbredde fra −0,7 til 3,4 prosent. Denne tregheten utnytter vi i imputeringen.
+
+```{r kap-vekstrate}
+# Beregn gjennomsnittlig årlig vekstrate per land-sektor
+cap_growth <- cap_clean %>%
+  filter(industry %in% industry_keep) %>%
+  arrange(country, industry, year) %>%
+  group_by(country, industry) %>%
+  mutate(g = (capital / lag(capital)) - 1) %>%
+  filter(!is.na(g), year >= 2015) %>%
+  summarise(
+    mean_g = mean(g, na.rm = TRUE),
+    n_years = n(),
+    .groups = "drop"
+  )
+
+# Sektorgjennomsnitt brukes der land-sektor-spesifikk rate mangler
+cap_growth_sector <- cap_growth %>%
+  group_by(industry) %>%
+  summarise(sector_g = mean(mean_g, na.rm = TRUE), .groups = "drop")
+```
+
+```{r kap-imputering}
+# Imputeringsfunksjon: bruk vekstrate-ekstrapolering
+fill_capital_growth <- function(target_year, cap_data, growth_data, sector_growth, max_lag = 2) {
+  filled <- NULL
+  for (lag_val in 0:max_lag) {
+    source_year <- target_year - lag_val
+    available <- cap_data %>%
+      filter(year == source_year) %>%
+      select(country, industry, capital)
+    
+    if (lag_val > 0) {
+      # Ekstrapoler med vekstrate i stedet for å anta konstant kapital
+      available <- available %>%
+        left_join(growth_data, by = c("country", "industry")) %>%
+        left_join(sector_growth, by = "industry") %>%
+        mutate(
+          g_used = ifelse(!is.na(mean_g), mean_g, sector_g),
+          capital = capital * (1 + g_used)^lag_val
+        ) %>%
+        select(country, industry, capital)
+    }
+    
+    available <- available %>% mutate(cap_lag = lag_val)
+    
+    if (is.null(filled)) {
+      filled <- available
+    } else {
+      already_covered <- filled %>% select(country, industry)
+      new_obs <- available %>%
+        anti_join(already_covered, by = c("country", "industry"))
+      filled <- bind_rows(filled, new_obs)
+    }
+  }
+  filled %>% mutate(year = target_year)
+}
+
+cap_filled <- bind_rows(
+  fill_capital_growth(2021, cap_clean, cap_growth, cap_growth_sector),
+  fill_capital_growth(2023, cap_clean, cap_growth, cap_growth_sector),
+  fill_capital_growth(2024, cap_clean, cap_growth, cap_growth_sector)
+)
+```
+
+Imputeringsstrategien følger prinsippet bak den permanente inventarmetoden (PIM), der kapitalbeholdningen fremskrives med netto investeringer (Berlemann & Wesselhöft, 2014; Müller, 2008). Fordi investeringsdata på tilstrekkelig detaljnivå ikke er tilgjengelige, brukes i stedet den historiske gjennomsnittlige vekstraten for den aktuelle land-sektor-kombinasjonen: $\hat{K}_{ict} = K_{ic,t-\ell} \times (1 + \bar{g}_{ic})^{\ell}$, der $\bar{g}_{ic}$ er gjennomsnittlig årlig vekstrate beregnet over perioden 2015–2023 og $\ell$ er antall år mellom siste observasjon og analyseåret. Der land-sektor-spesifikke rater mangler, brukes sektorgjennomsnittet over alle land. Maksimalt etterslep er to år.
+
+Denne tilnærmingen er vesentlig bedre enn enkel fremskrivning med konstant kapital (*carry-forward*), fordi den tar hensyn til at kapital typisk vokser over tid (Honaker & King, 2010). Den introduserer likevel klassisk målefeil: den faktiske kapitalen avviker fra den ekstrapolerte verdien. Fordi kapitalbeholdningen inngår som kontrollvariabel — ikke som avhengig variabel — vil målefeilen primært dempe koeffisienten for kapital mot null (*attenuation bias*; Griliches & Hausman, 1986). Effekten på KI-koeffisienten er mindre direkte. En variabel `cap_lag` registrerer antall års etterslep for hver observasjon, noe som gjør det mulig å teste robustheten ved å begrense analysen til kun observasjoner med eksakt match (`cap_lag = 0`).
+
+```{r kap-lag-fordeling}
+lag_tabell <- cap_filled %>%
+  mutate(cap_lag = paste0("Lag = ", cap_lag)) %>%
+  count(cap_lag, year) %>%
+  pivot_wider(names_from = year, values_from = n, values_fill = 0)
+
+kable(lag_tabell, caption = "Observasjoner per analyseaar og imputeringsavstand (Lag 0 = eksakt match)")
+```
+
+### Panelkonstruksjon
+
+Analyseperioden dekker 2021, 2023 og 2024 — de tre årene der KI-data er tilgjengelig og nasjonalregnskapet er tilstrekkelig rapportert. Året 2022 mangler i KI-undersøkelsen. Året 2025 ekskluderes fordi kun Malta har rapportert GVA og sysselsetting.
+
+To paneler konstrueres. *LP-panelet* kobler KI-adopsjon med GVA og timeverk og har arbeidsproduktivitet ($LP = GVA/L$) som sentral variabel. Kapital inngår ikke. *SFA-panelet* legger til kapitalbeholdningen og brukes til stokastisk frontanalyse der output er avhengig variabel og arbeid og kapital inngår som separate innsatsfaktorer.
+
+```{r panel-bygg}
+lp_panel <- ai_model %>%
+  filter(year %in% c(2021, 2023, 2024), industry %in% industry_keep) %>%
+  inner_join(gva_clean, by = c("country", "industry", "year")) %>%
+  inner_join(emp_clean, by = c("country", "industry", "year")) %>%
+  filter(!is.na(ai_adopt), gva > 0, hours > 0, country != "LU") %>%
+  mutate(
+    ln_y  = log(gva),
+    ln_l  = log(hours),
+    ln_lp = log(gva / hours),
+    id    = paste(country, industry, sep = "_")
+  )
+
+sfa_panel <- ai_model %>%
+  filter(year %in% c(2021, 2023, 2024), industry %in% industry_keep) %>%
+  inner_join(gva_clean, by = c("country", "industry", "year")) %>%
+  inner_join(emp_clean, by = c("country", "industry", "year")) %>%
+  inner_join(cap_filled, by = c("country", "industry", "year")) %>%
+  filter(!is.na(ai_adopt), gva > 0, hours > 0, capital > 0, country != "LU") %>%
+  mutate(
+    ln_y     = log(gva),
+    ln_l     = log(hours),
+    ln_k     = log(capital),
+    ln_lp    = log(gva / hours),
+    kl_ratio = log(capital / hours),
+    id       = paste(country, industry, sep = "_")
+  )
+```
+
+Luxemburg ekskluderes fordi det kun bidrar med fire sektorer over to år — for lite til pålitelig estimering. Kandidatlandene (Albania, Bosnia-Hercegovina, Montenegro, Nord-Makedonia, Tyrkia, Serbia) faller naturlig ut fordi de mangler nasjonalregnskapsdata.
+
+```{r panel-oversikt}
+tibble::tribble(
+  ~Panel, ~Observasjoner, ~Land, ~Sektorer, ~År,
+  "LP-panel",  nrow(lp_panel),  n_distinct(lp_panel$country),  n_distinct(lp_panel$industry),  paste(sort(unique(lp_panel$year)), collapse = ", "),
+  "SFA-panel", nrow(sfa_panel), n_distinct(sfa_panel$country), n_distinct(sfa_panel$industry), paste(sort(unique(sfa_panel$year)), collapse = ", ")
+) %>%
+  kable(caption = "Paneldimensjoner",
+        col.names = c("Panel", "Observasjoner", "Land", "Sektorer", "Aar"))
+```
+
+Forskjellen mellom de to panelene skyldes utelukkende land-sektor-år-kombinasjoner der kapitaldata mangler selv etter imputering. Begge panelene er ubalanserte: ikke alle enheter observeres i alle tre år. Dette er vanlig i internasjonale paneldata og håndteres av `fixest`-estimatoren.
+
+```{r panel-balanse}
+sfa_panel %>%
+  count(id) %>%
+  count(n, name = "Antall_enheter") %>%
+  kable(caption = "Panelbalanse i SFA-panelet: antall enheter observert i 1, 2 eller 3 aar",
+        col.names = c("Observert i N aar", "Antall enheter"))
+```
+
+## Deskriptiv statistikk
+
+```{r deskriptiv}
+sfa_panel %>%
+  summarise(
+    across(
+      c(ai_adopt, gva, hours, capital),
+      list(
+        Gj.snitt = ~round(mean(., na.rm = TRUE), 1),
+        Median   = ~round(median(., na.rm = TRUE), 1),
+        Std.avvik = ~round(sd(., na.rm = TRUE), 1),
+        Min      = ~round(min(., na.rm = TRUE), 1),
+        Maks     = ~round(max(., na.rm = TRUE), 1)
+      ),
+      .names = "{.col}__{.fn}"
+    )
+  ) %>%
+  pivot_longer(everything(),
+               names_to = c("variabel", "stat"),
+               names_sep = "__") %>%
+  pivot_wider(names_from = stat, values_from = value) %>%
+  mutate(variabel = case_when(
+    variabel == "ai_adopt" ~ "KI-adopsjon (% av foretak)",
+    variabel == "gva"      ~ "GVA (mill. EUR, 2020-vol.)",
+    variabel == "hours"    ~ "Timeverk (tusen)",
+    variabel == "capital"  ~ "Kapital (mill. EUR, 2020-vol.)"
+  )) %>%
+  kable(caption = "Deskriptiv statistikk, SFA-panelet",
+        col.names = c("Variabel", "Gjennomsnitt", "Median", "Std.avvik", "Min", "Maks"))
+```
+
+Variasjonen i panelet er betydelig. GVA spenner fra under 5 millioner euro (petroleumsraffinering i små land) til over 355 milliarder (bygg i Tyskland). KI-adopsjon varierer fra 0 til 100 prosent. Denne heterogeniteten er ønskelig fordi den gir identifiserende variasjon, men innebærer at resultatene kan være sensitive for ekstreme observasjoner — noe som testes i robusthetsanalysene.
+
+```{r ki-over-tid}
+sfa_panel %>%
+  group_by(year) %>%
+  summarise(
+    N = n(),
+    `Gj.snitt KI` = round(mean(ai_adopt), 1),
+    `Median KI` = round(median(ai_adopt), 1),
+    `Std.avvik KI` = round(sd(ai_adopt), 1),
+    .groups = "drop"
+  ) %>%
+  kable(caption = "KI-adopsjon over tid i SFA-panelet (prosent av foretak)")
+```
+
+```{r korrelasjon}
+cor_mat <- sfa_panel %>%
+  select(ai_adopt, ln_lp, kl_ratio) %>%
+  cor(use = "complete.obs") %>%
+  round(3)
+```
+
+Korrelasjonen mellom KI-adopsjon og log arbeidsproduktivitet er positiv ($r \approx$ `r cor_mat["ai_adopt", "ln_lp"]`). Korrelasjonen mellom arbeidsproduktivitet og kapitalintensitet er sterk ($r \approx$ `r cor_mat["ln_lp", "kl_ratio"]`), som forventet fra produksjonsteorien. Log arbeidsproduktivitet (`ln_lp`) er definert som $\ln(GVA / L)$ der GVA er i millioner euro og $L$ i tusen timeverk; forholdet er typisk under 1, slik at log-verdien er negativ — dette reflekterer måleenhetene og er ikke et substansielt problem.
+
+### Within-variasjon
+
+For panel fixed effects er det *within-variasjonen* — endringer over tid innenfor samme land-sektor-par — som identifiserer koeffisientene. Dersom KI-adopsjon ikke endrer seg over tid for en gitt enhet, bidrar den enheten ikke til identifikasjonen.
+
+```{r within-var}
+within_var <- sfa_panel %>%
+  group_by(id) %>%
+  summarise(
+    n = n(),
+    sd_ai = sd(ai_adopt, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+n_med_var <- sum(within_var$sd_ai > 0, na.rm = TRUE)
+n_uten_var <- sum(within_var$sd_ai == 0, na.rm = TRUE)
+mean_within_sd <- round(mean(within_var$sd_ai, na.rm = TRUE), 2)
+```
+
+Av `r nrow(within_var)` enheter i SFA-panelet har `r n_med_var` variasjon i KI-adopsjon over tid og `r n_uten_var` ingen variasjon. Gjennomsnittlig within-standardavvik for KI-adopsjon er `r mean_within_sd` prosentpoeng — tilstrekkelig til å identifisere effekter i panel-FE-modellen.
+
+\newpage
+
+# Resultater
+
+Kapittelet presenterer resultatene i fire deler. Stokastisk frontanalyse (SFA) er hovedmodellen og undersøker om KI-adopsjon er assosiert med lavere teknisk ineffektivitet. Panel fixed effects (FE) tjener som robusthetssjekk med færre fordelingsantakelser. Teknologidekomponeringen bryter KI-adopsjon ned i undertyper og identifiserer hvilke teknologier som driver assosiasjonen. Til slutt plasserer en historisk parallell resultatene i konteksten av tre tiårs digital divergens i europeiske næringer.
+
+## Stokastisk frontanalyse
+
+### Hovedresultat
+
+SFA estimerer en Cobb-Douglas produksjonsfront med KI-adopsjon som determinant for teknisk ineffektivitet etter Battese og Coelli (1995). Spesifikasjonen er:
+
+$$\ln Y_{it} = \beta_0 + \beta_L \ln L_{it} + \beta_K \ln K_{it} + v_{it} - u_{it}$$ $$u_{it} = \delta_0 + \delta_1 \text{KI}_{it} + w_{it}$$
+
+der fronten estimerer potensiell produksjon og ineffektivitetsligningen modellerer avstanden til denne fronten som en funksjon av KI-adopsjonsraten.
+
+```{r sfa-hovedmodell}
+sfa_main <- sfa(
+  ln_y ~ ln_l + ln_k | ai_adopt,
+  data = sfa_panel
+)
+
+summary(sfa_main)
+```
+
+```{r sfa-resultattabell}
+# Hent nøkkelparametre
+sfa_coefs <- coef(sfa_main)
+sfa_se    <- sqrt(diag(vcov(sfa_main)))
+te_vec    <- as.numeric(efficiencies(sfa_main))
+
+tibble::tribble(
+  ~Parameter, ~Estimat, ~Std.feil, ~Tolkning,
+  "beta_L (arbeid)",       round(sfa_coefs["ln_l"], 3),         round(sfa_se["ln_l"], 3),         "Produksjonselastisitet for arbeid",
+  "beta_K (kapital)",      round(sfa_coefs["ln_k"], 3),         round(sfa_se["ln_k"], 3),         "Produksjonselastisitet for kapital",
+  "beta_L + beta_K",       round(sfa_coefs["ln_l"] + sfa_coefs["ln_k"], 3), NA,                  "Skalautbytte (1.0 = CRS)",
+  "delta_KI (ineffektivitet)", round(sfa_coefs["Z_ai_adopt"], 4),   round(sfa_se["Z_ai_adopt"], 4),   "Negativ = KI reduserer ineffektivitet",
+  "gamma",                 round(coef(sfa_main)["gamma"], 3),    NA,                               "Andel varians fra ineffektivitet",
+  "Gj.snitt TE",           round(mean(te_vec), 3),               round(sd(te_vec), 3),             "Gjennomsnittlig teknisk effektivitet"
+) %>%
+  kable(caption = "SFA-resultater (Battese-Coelli 1995)",
+        col.names = c("Parameter", "Estimat", "Std.feil / SD", "Tolkning"))
+```
+
+Tre resultater er sentrale.
+
+For det første er KI-koeffisienten i ineffektivitetsligningen negativ og sterkt signifikant ($\hat{\delta}_{\text{KI}} < 0$, $p < 0{,}001$). Høyere KI-adopsjon er assosiert med lavere teknisk ineffektivitet — altså produksjon nærmere den estimerte fronten. Tolkningen er at sektorer med høyere andel KI-brukende foretak opererer mer effektivt relativt til sitt produksjonspotensial, konsistent med at KI forbedrer prosesser, koordinering og beslutningsstøtte snarere enn at det fundamentalt endrer produksjonsteknologien.
+
+For det andre er gamma-parameteren høy ($\gamma \approx 0{,}78$). Dette betyr at om lag 78 prosent av den totale variasjonen i avvik fra fronten skyldes systematisk ineffektivitet snarere enn tilfeldig støy. Den formelle testen for $H_0: \gamma = 0$ forkaster klart nullhypotesen (den kritiske verdien er 2,706 under den blandede kjikvadratfordelingen; Kodde & Palm, 1986). SFA tilfører dermed informasjon utover det en standard regresjonsmodell gir — dekomponeringen av feilleddet er meningsfull.
+
+For det tredje indikerer produksjonselastisitetene svakt økende skalautbytte ($\hat{\beta}_L + \hat{\beta}_K \approx 1{,}04$), noe som betyr at CRS-antakelsen som ligger til grunn for intensitetsformen er en rimelig tilnærming.
+
+### Effektivitetsfordeling
+
+```{r te-fordeling, fig.cap = "Fordeling av estimert teknisk effektivitet (SFA)", fig.height = 3.5}
+te_vals <- as.numeric(efficiencies(sfa_main))
+
+te_df <- data.frame(TE = te_vals)
+
+ggplot(te_df, aes(x = TE)) +
+  geom_histogram(bins = 30, fill = "steelblue", color = "white", alpha = 0.8) +
+  geom_vline(xintercept = mean(te_vals), linetype = "dashed", color = "red") +
+  labs(x = "Teknisk effektivitet (TE)", y = "Antall observasjoner") +
+  theme_minimal() +
+  annotate("text", x = mean(te_vals) + 0.05, y = Inf, vjust = 2,
+           label = paste0("Gj.snitt = ", round(mean(te_vals), 2)),
+           color = "red", size = 3.5)
+```
+
+Gjennomsnittlig teknisk effektivitet er om lag 0,58 — europeiske næringer produserer i gjennomsnitt 58 prosent av sitt estimerte potensial. Fordelingen er bred, med kvartiler fra ca. 0,42 til 0,74. Det er viktig å understreke at denne spredningen reflekterer *alle* faktorer som påvirker avstanden til fronten — institusjonelle forhold, ledelseskvalitet, regulering — ikke bare teknologibruk. Med kun T=3 fungerer BC95 i praksis som en pooled tverrsnittsmodell, og KI-koeffisienten identifiseres primært fra variasjon *mellom* land-sektor-par, ikke fra endringer over tid innenfor dem. Assosiasjonen $\delta_{\text{KI}} < 0$ betyr at sektorer med høyere KI-adopsjon tenderer mot lavere ineffektivitet, men dette er ikke i seg selv evidens for at økt KI-bruk *forårsaker* effektivitetsforbedring.
+
+## Panel fixed effects
+
+For å teste robustheten av SFA-resultatet estimeres panel FE i to former. Output-formen bruker samme variabler som SFA-fronten, noe som gjør koeffisientene direkte sammenlignbare. Intensitetsformen bruker arbeidsproduktivitet som avhengig variabel.
+
+```{r fe-output}
+# Output-form (sammenlignbar med SFA)
+fe_output <- feols(
+  ln_y ~ ai_adopt + ln_l + ln_k | country + industry + year,
+  data = sfa_panel,
+  cluster = ~country
+)
+
+# Intensitetsform (arbeidsproduktivitet)
+fe_intensity <- feols(
+  ln_lp ~ ai_adopt + kl_ratio | country + industry + year,
+  data = sfa_panel,
+  cluster = ~country
+)
+
+# Intensitetsform uten kapital (stoerre panel)
+fe_simple <- feols(
+  ln_lp ~ ai_adopt | country + industry + year,
+  data = lp_panel,
+  cluster = ~country
+)
+
+etable(fe_output, fe_intensity, fe_simple,
+       headers = c("Output-form", "Intensitetsform", "Uten kapital"),
+       fitstat = c("n", "r2", "wr2"),
+       order = c("ai_adopt"))
+```
+
+```{r crs-test}
+# CRS-test: er beta_L + beta_K = 1?
+fe_crs_test <- feols(
+  ln_lp ~ ai_adopt + kl_ratio + ln_l | country + industry + year,
+  data = sfa_panel,
+  cluster = ~country
+)
+crs_coef <- coef(fe_crs_test)["ln_l"]
+crs_pval <- pvalue(fe_crs_test)["ln_l"]
+```
+
+KI-koeffisienten er positiv i alle FE-spesifikasjoner, med størrelsesorden 0,004–0,008. I output-formen, som er direkte sammenlignbar med SFA, er koeffisienten positiv men noe svakere enn SFA-estimatet — konsistent med at FE kontrollerer for tidskonstant heterogenitet gjennom faste effekter i stedet for gjennom parametriske fordelingsantakelser.
+
+Koeffisienten for $\ln L$ i den utvidede intensitetsformen er `r round(crs_coef, 3)` ($p =$ `r round(crs_pval, 3)`). En ikke-signifikant koeffisient for $\ln L$ er konsistent med konstant skalautbytte — intensitetsformen er dermed en gyldig spesifikasjon for disse dataene.
+
+At KI-koeffisienten har *samme fortegn* i SFA og FE styrker tilliten til resultatet: assosiasjonen mellom KI og produktivitet er ikke en artefakt av SFA-spesifikke fordelingsantakelser. At den er noe svakere i FE reflekterer at faste effekter absorberer tidskonstante forskjeller mellom sektorer — en del av den bivariate sammenhengen i SFA drives av at digitalt avanserte sektorer både adopterer KI og er effektive av andre grunner.
+
+## Dekomponering etter KI-teknologitype
+
+Hovedindikatoren `E_AI_TANY` fanger om foretaket bruker *minst en* KI-teknologi — uavhengig av hvilken. Men KI-teknologiene er svært forskjellige: maskinlæring for prediktiv vedlikehold i en fabrikk er en annen type produktivitetsdriver enn ChatGPT for skriveoppgaver. Eurostat-tabellen tillater en dekomponering der den samlede indikatoren erstattes med teknologispesifikke adopsjonsrater.
+
+```{r dekomponering}
+ki_indikatorer <- c(
+  "E_AI_TANY", "E_AI_TGE2", "E_AI_TGE3",
+  "E_AI_TNLG", "E_AI_TML", "E_AI_TPA",
+  "E_AI_TTM", "E_AI_TIR", "E_AI_TSR", "E_AI_TAR"
+)
+
+ki_labels <- c(
+  "Minst 1 KI", "Minst 2 KI", "Minst 3 KI",
+  "Spraakgenerering", "Maskinlaering", "Prosessautom.",
+  "Tekstutvinning", "Bildegjenkjenning", "Talegjenkjenning", "Autonome roboter"
+)
+
+dekomp_resultater <- list()
+
+for (i in seq_along(ki_indikatorer)) {
+  ki_panel <- ai_full %>%
+    filter(
+      !country %in% c("EU27_2020", "EA", "EA12", "EA19", "EA20", "EA21"),
+      ai_indicator == ki_indikatorer[i],
+      measure_unit == "PC_ENT",
+      industry %in% industry_keep,
+      year %in% c(2021, 2023, 2024)
+    ) %>%
+    select(country, industry, year, value) %>%
+    rename(ki_var = value) %>%
+    filter(!is.na(ki_var)) %>%
+    inner_join(gva_clean, by = c("country", "industry", "year")) %>%
+    inner_join(emp_clean, by = c("country", "industry", "year")) %>%
+    filter(gva > 0, hours > 0, country != "LU") %>%
+    mutate(ln_lp = log(gva / hours))
+
+  mod <- feols(
+    ln_lp ~ ki_var | country + industry + year,
+    data = ki_panel,
+    cluster = ~country
+  )
+  dekomp_resultater[[ki_labels[i]]] <- mod
+}
+
+etable(dekomp_resultater,
+       fitstat = c("n", "wr2"),
+       order = "ki_var")
+```
+
+Av de ti teknologitypene er det kun maskinlæring (`E_AI_TML`) og bildegjenkjenning (`E_AI_TIR`) som gir statistisk signifikante koeffisienter. Maskinlæring har den sterkeste assosiasjonen ($\hat{\beta} \approx 0{,}008$, $p \approx 0{,}03$). Språkgenerering (`E_AI_TNLG`) — som fanger generativ KI inkludert ChatGPT-bruk — er positiv men ikke signifikant.
+
+Et interessant mønster er at koeffisienten stiger med adopsjonsbredde: fra 0,004 for foretak med minst 1 KI-teknologi, til 0,005 for minst 2, til 0,006 for minst 3. Stigende koeffisient med bredde er konsistent med at dypere integrasjon av KI — bruk av flere teknologier samtidig — har sterkere produktivitetsassosiasjon enn sporadisk bruk av en enkelt teknologi.
+
+### Maskinlaering versus generativ KI
+
+Den mest substansielle testen er å sette maskinlæring og generativ KI i *samme modell*:
+
+```{r ml-vs-genai}
+ki_begge <- ai_full %>%
+  filter(
+    !country %in% c("EU27_2020", "EA", "EA12", "EA19", "EA20", "EA21"),
+    ai_indicator %in% c("E_AI_TNLG", "E_AI_TML"),
+    measure_unit == "PC_ENT",
+    industry %in% industry_keep,
+    year %in% c(2021, 2023, 2024)
+  ) %>%
+  select(country, industry, year, ai_indicator, value) %>%
+  pivot_wider(names_from = ai_indicator, values_from = value) %>%
+  rename(ai_generativ = E_AI_TNLG, ai_ml = E_AI_TML) %>%
+  filter(!is.na(ai_generativ), !is.na(ai_ml)) %>%
+  inner_join(gva_clean, by = c("country", "industry", "year")) %>%
+  inner_join(emp_clean, by = c("country", "industry", "year")) %>%
+  filter(gva > 0, hours > 0, country != "LU") %>%
+  mutate(ln_lp = log(gva / hours))
+
+fe_dekomp <- feols(
+  ln_lp ~ ai_generativ + ai_ml | country + industry + year,
+  data = ki_begge,
+  cluster = ~country
+)
+
+summary(fe_dekomp)
+```
+
+Når begge teknologiene konkurrerer om å forklare variasjon i produktivitet, er det maskinlæring som dominerer ($\hat{\beta}_{\text{ML}} \approx 0{,}011$, $p < 0{,}02$) mens generativ KI faller til tilnærmet null ($\hat{\beta}_{\text{GenKI}} \approx -0{,}001$, $p \approx 0{,}82$). Hele den positive assosiasjonen mellom KI-adopsjon og arbeidsproduktivitet drives av maskinlæring — generativ KI tilfører ingen forklaringskraft utover det maskinlæring allerede fanger.
+
+Dette funnet er substansielt viktig. Det antyder at produktivitetseffektene av KI — i den grad de eksisterer på sektornivå — kommer fra analyttiske og prediktive anvendelser (maskinlæring for dataanalyse, bildegjenkjenning for kvalitetskontroll) snarere enn fra de generative verktøyene som dominerer den offentlige debatten. Resultatet er konsistent med Acemoglus (2024) argument om at mange av oppgavene som generativ KI eksponerer for automatisering er «vanskelige å lære» med lavere reelle kostnadsbesparelser enn eksperimentstudier antyder.
+
+## Historisk parallell: digital divergens over tre tiaar
+
+SFA- og FE-resultatene viser en positiv assosiasjon mellom KI-adopsjon og produktivitet, men den kausale tolkningen er usikker. Et naturlig spørsmål er om denne assosiasjonen reflekterer en genuin KI-effekt eller en bredere dynamikk der teknologisk avanserte sektorer systematisk opplever sterkere produktivitetsvekst uavhengig av hvilken spesifikk teknologi som adopteres. Produktivitetsserien strekker seg tilbake til 1995, noe som gjør det mulig å kontekstualisere KI-resultatene i en tre tiår lang historie.
+
+### De samme sektorene
+
+Et første spørsmål er om sektorene som adopterer KI i 2020-årene er de samme som var digitalt intensive ved årtusenskiftet. IKT-kapitalandelen i 2000 — andelen av netto fast realkapital som utgjøres av immaterielle eiendeler inkludert programvare og databaser (N117N/N11N) — brukes som mål på digital intensitet.
+
+```{r ikt-korrelasjon}
+ict_cap <- cap_raw %>%
+  rename(country = geo, industry = nace_r2, year = TIME_PERIOD, value = values) %>%
+  filter(
+    !country %in% c("EU27_2020", "EA", "EA12", "EA19", "EA20", "EA21"),
+    asset10 %in% c("N117N", "N11N"),
+    unit == "CLV20_MEUR",
+    year == 2000
+  ) %>%
+  mutate(industry = case_when(
+    industry == "D" ~ "D35", industry == "L" ~ "L68", TRUE ~ industry
+  )) %>%
+  filter(industry %in% industry_keep, !is.na(value), value > 0) %>%
+  select(country, industry, asset10, value) %>%
+  pivot_wider(names_from = asset10, values_from = value) %>%
+  filter(!is.na(N117N), !is.na(N11N)) %>%
+  mutate(ict_share = N117N / N11N) %>%
+  group_by(industry) %>%
+  summarise(ict_share_2000 = mean(ict_share, na.rm = TRUE), .groups = "drop")
+
+ai_level_2024 <- ai_model %>%
+  filter(year == 2024, !is.na(ai_adopt)) %>%
+  group_by(industry) %>%
+  summarise(ai_2024 = mean(ai_adopt, na.rm = TRUE), .groups = "drop")
+
+compare <- ict_cap %>% inner_join(ai_level_2024, by = "industry")
+ikt_ki_cor <- round(cor(compare$ict_share_2000, compare$ai_2024), 2)
+```
+
+Korrelasjonen mellom IKT-kapitalandel i 2000 og KI-adopsjon i 2024 er $r =$ `r ikt_ki_cor`. De samme sektorene som var digitalt intensive for 25 år siden er de som adopterer KI raskest i dag. J62_J63 (IKT-tjenester), M72 (forskning) og C26 (elektronikk) dominerer begge rangeringene. Bygg (F), overnatting (I) og tekstiler (C13-C15) ligger lavest i begge. Sektorenes relative posisjon i teknologiadopsjon er bemerkelsesverdig stabil over et kvart århundre — fra ERP-systemer og bredbånd til store språkmodeller og generativ KI.
+
+### 30-aars event study
+
+For å visualisere den historiske dynamikken estimeres en event study der IKT-kapitalandelen i 2000 interageres med årsdummyer over perioden 1995--2024:
+
+$$\ln LP_{ict} = \alpha_{ic} + \sum_{t \neq 1999} \gamma_t \left( \overline{\text{IKT}}_i \times 1(t) \right) + \tau_t + \varepsilon_{ict}$$
+
+Referanseåret er 1999 — siste hele kalenderår før dot-com-boomen.
+
+```{r 30yr-data}
+prod_full <- gva_clean %>%
+  inner_join(emp_clean, by = c("country", "industry", "year")) %>%
+  filter(
+    gva > 0, hours > 0,
+    year >= 1995, year <= 2024,
+    country != "LU",
+    industry %in% industry_keep
+  ) %>%
+  mutate(
+    ln_lp = log(gva / hours),
+    id = paste(country, industry, sep = "_")
+  ) %>%
+  inner_join(ict_cap, by = "industry")
+```
+
+```{r 30yr-es, fig.cap = "30 aars event study: IKT-intensitet og arbeidsproduktivitet. Vertikale linjer markerer dot-com-boomen (blaa), finanskrisen (oransje) og ChatGPT-lansering (roed).", fig.height = 4.5}
+es_30yr <- feols(
+  ln_lp ~ i(year, ict_share_2000, ref = 1999) | id + year,
+  data = prod_full,
+  cluster = ~id
+)
+
+iplot(es_30yr,
+      xlab = "Year",
+      ylab = "Koeffisient (IKT-andel x aar)",
+      main = "Digital divergens 1995-2024")
+abline(v = 1999.5, lty = 2, col = "blue")
+abline(v = 2007.5, lty = 2, col = "orange")
+abline(v = 2022.5, lty = 2, col = "red")
+legend("topleft",
+       legend = c("Dot-com boom", "Finanskrisen", "ChatGPT"),
+       col = c("blue", "orange", "red"), lty = 2, cex = 0.8)
+```
+
+Plottet viser en monotont stigende kurve over 30 år. Koeffisientene starter negativt i 1995, krysser null rundt årtusenskiftet, og stiger jevnt til ca. +0,85 i 2024. Det finnes ingen flat periode — divergensen mellom digitalt intensive og ikke-intensive sektorer er en kontinuerlig prosess over tre tiår. Fire epoker er synlige: en tidlig investeringsfase (1995–1999), akselerert divergens under dot-com og bredbåndsdiffusjonen (2000–2007), et platå under finanskrisen etterfulgt av videre vekst (2008–2019), og fornyet akselerasjon i 2020–2024.
+
+Det er ingen synlig brudd ved ChatGPT-lanseringen — KI-perioden fortsetter den eksisterende trenden. Dette betyr ikke at KI ikke har en effekt, men at en eventuell KI-effekt er umulig å skille fra den underliggende digitale divergensen med disse dataene.
+
+### Implikasjoner for tolkning
+
+Den historiske parallellen har to implikasjoner for tolkningen av SFA- og FE-resultatene. For det første er den positive assosiasjonen mellom KI og produktivitet konsistent med — men ikke evidens for — en kausal KI-effekt. Sektorer som adopterer KI er de *samme* sektorene som har opplevd sterkere produktivitetsvekst i tre tiår, drevet av komplementær digital kapital, humankapital og organisasjonsstruktur. KI-koeffisienten i SFA fanger denne brede teknologidynamikken, ikke nødvendigvis en isolert KI-effekt. For det andre er SFA-estimatet ($\delta_{\text{KI}} < 0$) sannsynligvis en *øvre grense* for den kausale effekten: den sanne effekten av KI på effektivitet ligger et sted mellom null og SFA-koeffisienten.
+
+## Robusthetsanalyser
+
+```{r robusthet}
+# Uten Irland (profit-shifting)
+fe_noie <- feols(
+  ln_lp ~ ai_adopt + kl_ratio | country + industry + year,
+  data = sfa_panel %>% filter(country != "IE"),
+  cluster = ~country
+)
+
+# Kun eksakt kapital (lag = 0)
+fe_exact <- feols(
+  ln_lp ~ ai_adopt + kl_ratio | country + industry + year,
+  data = sfa_panel %>% filter(cap_lag == 0),
+  cluster = ~country
+)
+
+# Uten IKT-sektorer
+fe_noj <- feols(
+  ln_lp ~ ai_adopt + kl_ratio | country + industry + year,
+  data = sfa_panel %>% filter(!industry %in% c("J58-J60", "J61", "J62_J63")),
+  cluster = ~country
+)
+
+# Kun 2023-2024
+fe_short <- feols(
+  ln_lp ~ ai_adopt + kl_ratio | country + industry + year,
+  data = sfa_panel %>% filter(year %in% c(2023, 2024)),
+  cluster = ~country
+)
+
+etable(fe_intensity, fe_noie, fe_exact, fe_noj, fe_short,
+       headers = c("Hoved", "Uten IE", "Eksakt K", "Uten J", "2023-24"),
+       fitstat = c("n", "r2", "wr2"),
+       order = "ai_adopt")
+```
+
+Koeffisienten er positiv i alle spesifikasjoner — fortegnet er robust. KI-koeffisienten er sterkest og signifikant ($p < 0{,}05$) i to delutvalg: med kun eksakt kapitaldata (lag = 0) og med kun 2023–2024. Det første antyder at kapitalimputeringen introduserer målefeil som demper koeffisienten. Det andre reflekterer at den identifiserende variasjonen i KI primært kommer fra ChatGPT-bølgen mellom 2023 og 2024. Å ekskludere Irland endrer ikke resultatene merkbart. Å ekskludere IKT-sektorene svekker resultatet noe, noe som reflekterer at disse sektorene har høyest KI-variasjon og dermed bidrar mest til identifikasjonen.
+
+### Mundlak-korreksjon i SFA
+
+En kjent begrensning ved BC95 er at uobservert heterogenitet kan forveksles med ineffektivitet (Greene, 2005). En delvis korreksjon er å inkludere enhetsmidler av tidsvarierende variabler i ineffektivitetsligningen — en Mundlak-tilnærming som kontrollerer for tidskonstant korrelasjon mellom observerbare og uobserverbare faktorer.
+
+```{r mundlak}
+sfa_mundlak_data <- sfa_panel %>%
+  group_by(id) %>%
+  mutate(
+    ai_mean = mean(ai_adopt, na.rm = TRUE),
+    ln_l_mean = mean(ln_l, na.rm = TRUE),
+    ln_k_mean = mean(ln_k, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+sfa_mundlak <- sfa(
+  ln_y ~ ln_l + ln_k | ai_adopt + ai_mean + ln_l_mean + ln_k_mean,
+  data = sfa_mundlak_data
+)
+
+# Sammenlign KI-koeffisient med og uten Mundlak
+tibble::tribble(
+  ~Modell, ~delta_KI, ~p_verdi,
+  "SFA standard",      round(coef(sfa_main)["Z_ai_adopt"], 4),    "<0.001",
+  "SFA med Mundlak",   round(coef(sfa_mundlak)["Z_ai_adopt"], 4), "se output"
+) %>%
+  kable(caption = "KI-koeffisient i ineffektivitetsligningen med og uten Mundlak-korreksjon")
+```
+
+Mundlak-korreksjonen absorberer den tidskonstante komponenten av assosiasjonen mellom KI og ineffektivitet. Dersom $\delta_{\text{KI}}$ forblir signifikant etter Mundlak, er assosiasjonen ikke utelukkende drevet av tidskonstante sektorforskjeller.
+
+## Samlet resultatoversikt
+
+```{r resultatoversikt}
+tibble::tribble(
+  ~Modell, ~Koeffisient, ~Tolkning,
+  "SFA (BC95)",           "delta_KI < 0 ***",  "KI assosiert med lavere ineffektivitet",
+  "FE output-form",       "beta_KI > 0",       "Positivt fortegn, konsistent med SFA",
+  "FE intensitetsform",   "beta_KI > 0",       "Positivt fortegn, svakere signifikans",
+  "Dekomp.: maskinlaering", "beta_ML > 0 **",  "Hele assosiasjonen drives av ML",
+  "Dekomp.: generativ KI", "beta_GenKI = 0",   "Generativ KI tilforer ingenting utover ML",
+  "Robusthet (5 specs)",  "Alle positive",      "Fortegnet er robust"
+) %>%
+  kable(caption = "Oversikt over hovedresultater",
+        col.names = c("Modell", "KI-koeffisient", "Tolkning"))
+```
+
+Den samlede evidensen peker mot en *svak positiv assosiasjon* mellom KI-adopsjon og arbeidsproduktivitet i europeiske næringer. Assosiasjonen er sterkest i SFA (der den identifiseres fra tverrsnittsvarasjon) og svakere i panel FE (der den identifiseres fra endringer over tid). Dekomponeringen viser at maskinlæring — ikke generativ KI — driver hele assosiasjonen. Den historiske parallellen avdekker at de samme sektorene har opplevd sterkere produktivitetsvekst i tre tiår, noe som betyr at SFA-estimatet sannsynligvis er en øvre grense for den kausale KI-effekten.
+
+\newpage
+
+# Diskusjon
+
+Resultatene peker mot en svak positiv assosiasjon mellom KI-adopsjon og arbeidsproduktivitet i europeiske næringer. Assosiasjonen er statistisk sterkest i SFA, der KI-adopsjon er negativt assosiert med teknisk ineffektivitet, og svakere men konsistent i panel FE. Dekomponeringen avdekker at maskinlæring — ikke generativ KI — driver hele den observerte sammenhengen. Den historiske parallellen viser at dette mønsteret inngår i en tre tiår lang digital divergens der de samme sektorene systematisk adopterer ny teknologi og opplever sterkere produktivitetsvekst. Dette kapitlet diskuterer tolkningen av disse funnene, deres begrensninger, og implikasjonene for den bredere debatten om KI og produktivitet.
+
+## Hva funnene sier — og hva de ikke sier
+
+Det er fristende å tolke $\delta_{\text{KI}} < 0$ som evidens for at KI forbedrer effektiviteten i europeiske næringer. Denne tolkningen er konsistent med dataene, men den er ikke den eneste som er det. Tre alternative forklaringer er like plausible.
+
+For det første kan *seleksjon* forklare assosiasjonen. Sektorer med bedre ledelse, høyere humankapital og mer avansert digital infrastruktur adopterer trolig KI raskere *og* er mer effektive av andre grunner. Korrelasjonen $r \approx 0{,}91$ mellom IKT-kapitalandel i 2000 og KI-adopsjon i 2024 underbygger dette: sektorenes relative teknologiposisjon er bemerkelsesverdig stabil over tid, noe som tyder på at tidskonstante sektoregenskaper driver begge variablene.
+
+For det andre kan *omvendt kausalitet* spille inn. Produktive sektorer genererer høyere overskudd og har dermed større evne og incentiv til å investere i ny teknologi. Med T=3 og uten et eksternt instrument kan vi ikke skille denne kanalen fra en genuin KI-effekt.
+
+For det tredje har SFA med kun tre tidsperioder begrenset evne til å skille tidskonstant heterogenitet fra genuint ineffektivitet (Greene, 2005). Gamma-parameteren på 0,78 — som tilsier at 78 prosent av avvikene fra fronten er systematiske — kan delvis reflektere uobserverte sektorforskjeller snarere enn reell ineffektivitet. Mundlak-korreksjonen adresserer dette delvis, men kan ikke eliminere problemet fullstendig.
+
+Den samlede vurderingen er at SFA-koeffisienten er en *øvre grense* for den kausale effekten av KI på teknisk effektivitet. Den sanne effekten ligger et sted mellom null (ingen kausal effekt — assosiasjonen er ren seleksjon) og SFA-estimatet (full kausal effekt). At FE-koeffisienten er svakere enn SFA-koeffisienten er konsistent med at en del av SFA-assosiasjonen drives av tidskonstant heterogenitet som FE absorberer.
+
+## Maskinlæring versus generativ KI
+
+Det mest substansielle empiriske bidraget er dekomponeringen: når maskinlæring og generativ KI settes i samme modell, forsvinner generativ KI fullstendig ($p \approx 0{,}82$) mens maskinlæring forblir sterkt signifikant ($p < 0{,}02$). Dette er et overraskende funn gitt den offentlige oppmerksomheten rundt ChatGPT og lignende verktøy, og det fortjener flere mulige forklaringer.
+
+En første forklaring er *tidsforsinkelse*. Generativ KI har spredt seg raskt siden november 2022, men produktivitetseffektene kan kreve komplementære investeringer i organisering, opplæring og arbeidsprosesser — den samme J-kurve-dynamikken som Brynjolfsson et al. (2021) dokumenterer for tidligere generelle teknologier. Maskinlæring har vært i bruk lenger og har hatt mer tid til å integreres i produksjonsprosesser. Med kun to post-ChatGPT observasjoner (2023 og 2024) er det for tidlig å konkludere med at generativ KI ikke har produktivitetseffekter.
+
+En annen forklaring er *målingsnivå*. Generativ KI kan forbedre individuelle oppgaver betydelig — som dokumentert av Noy og Zhang (2023) og Brynjolfsson et al. (2023) — uten at dette er synlig i sektoraggregater. Dersom tidsbesparelsene fra ChatGPT absorberes gjennom redusert arbeidsinnsats per oppgave snarere enn økt output, vil arbeidsproduktiviteten (GVA per timeverk) ikke nødvendigvis stige. Maskinlæring for prediktiv vedlikehold, kvalitetskontroll og prosessoptimering har derimot en mer direkte kobling til fysisk output som kan fanges i sektortall.
+
+En tredje forklaring er konsistent med Acemoglus (2024) rammeverk: mange av oppgavene som generativ KI eksponerer er «vanskelige å lære» — oppgavene krever kontekstforståelse, domenekunnskap og kvalitetsvurdering som dagens KI-systemer bare delvis mestrer. De reelle kostnadsbesparelsene kan derfor være lavere enn de 27 prosent som eksperimentstudiene rapporterer, spesielt i heterogene sektorer der oppgavene varierer mer enn i et kontrollert eksperiment.
+
+## Sammenheng med litteraturen
+
+Resultatene er konsistente med flere deler av den eksisterende empirien. Acemoglu (2024) anslår en TFP-økning på 0,66 prosent over ti år — et moderat anslag som den svake assosiasjonen i denne analysen er forenlig med. Humlum og Vestergaard (2025) finner med danske registerdata presist estimerte nulleffekter av KI-eksponering på lønn og arbeidstimer, noe som understøtter at aggregerte effekter av KI foreløpig er svake. Den positive assosiasjonen mellom IKT og teknisk effektivitet er veletablert i litteraturen — Dimelis og Papaioannou (2011, 2017) og Mastromarco et al. (2018) dokumenterer tilsvarende mønstre for bredbånd og IKT-kapital — og denne oppgaven viser at KI-adopsjon passer inn i det samme bildet.
+
+Dekomponeringsfunnet — at maskinlæring, ikke generativ KI, driver assosiasjonen — er nytt i litteraturen. Eksisterende studier av KI og produktivitet bruker enten samlede KI-mål (Czarnitzki et al., 2023; Gao & Feng, 2023) eller eksponeringsindekser basert på oppgaveinnhold (Eloundou et al., 2024; Felten et al., 2021). Eurostat-tabellens teknologispesifikke indikatorer gjør det mulig å skille mellom KI-typer på en måte som ikke har vært tilgjengelig i tidligere makro-/sektornivåstudier.
+
+## Begrensninger
+
+Analysen har flere vesentlige begrensninger som bør nevnes eksplisitt.
+
+*Kort tidsserie.* Tre tidsperioder gir begrenset statistisk styrke for panel FE og gjør det umulig å skille kortsiktige adopsjonseffekter fra langsiktige produktivitetsendringer. SFA fungerer i praksis som en pooled tverrsnittsmodell med T=3.
+
+*Ekstensiv margin.* KI-variabelen måler *om* foretak bruker KI, ikke *hvor intensivt*. Et foretak som bruker ChatGPT til å skrive e-poster en gang i uken klassifiseres likt med et foretak som har integrert maskinlæring i hele produksjonsprosessen.
+
+*Aggregeringsnivå.* Sektornivådata skjuler heterogenitet mellom foretak. Produktivitetseffekter kan være konsentrert blant de mest avanserte foretakene uten å være synlige i sektoraggregater.
+
+*Ingen kausal identifikasjon.* Verken SFA eller FE identifiserer kausale effekter uten et eksternt instrument. Resultatene dokumenterer assosiasjoner, ikke årsakssammenhenger.
+
+*Kapitalimputering.* Selv med vekstrate-ekstrapolering introduserer manglende kapitaldata målefeil som potensielt demper koeffisientene (Griliches & Hausman, 1986). Robusthetssjekken med kun eksakt kapitaldata gir sterkere resultater, noe som antyder at imputeringen introduserer konservativ bias.
+
+\newpage
+
+# Konklusjon
+
+Denne oppgaven har undersøkt om høyere KI-intensitet er assosiert med sterkere produktivitet i europeiske næringer, ved hjelp av stokastisk frontanalyse og panel fixed effects på et paneldatasett med 29 sektorer i opptil 28 land over perioden 2021–2024.
+
+Tre hovedfunn fremkommer. For det første er KI-adopsjon negativt assosiert med teknisk ineffektivitet i SFA-modellen — sektorer med høyere andel KI-brukende foretak opererer nærmere den estimerte produksjonsfronten. For det andre er det maskinlæring, ikke generativ KI, som driver hele den observerte assosiasjonen; når begge teknologiene inkluderes i samme modell, kollapser generativ KI til null. For det tredje inngår denne assosiasjonen i en tre tiår lang digital divergens der de samme sektorene systematisk adopterer ny teknologi og opplever sterkere produktivitetsvekst, noe som innebærer at den kausale KI-effekten sannsynligvis er svakere enn tverrsnittsassosiasjonen tilsier.
+
+Resultatene er konsistente med Acemoglus (2024) moderate anslag for KIs produktivitetseffekt og med IKT-litteraturens funn om at digital teknologi primært reduserer ineffektivitet snarere enn å flytte produksjonsfronten (Dimelis & Papaioannou, 2011; Mastromarco et al., 2018). Dekomponeringen mellom KI-typer er et nytt empirisk bidrag: den antyder at produktivitetsgevinstene fra KI — i den grad de eksisterer på sektornivå — kommer fra analyttiske og prediktive anvendelser snarere enn fra de generative verktøyene som dominerer den offentlige debatten.
+
+Analysen er begrenset av kort tidsserie (T=3), manglende kausal identifikasjon, og et KI-mål som kun fanger den ekstensive marginen. Fremtidig forskning kan adressere disse begrensningene gjennom lengre tidsserier etter hvert som Eurostats KI-modul akkumulerer flere år, gjennom bedriftsdata som fanger intensiv bruk, eller gjennom instrumentvariabelstrategier som kan skille kausal effekt fra seleksjon. Den historiske parallellen antyder at produktivitetseffektene av generelle teknologier typisk materialiserer seg med en forsinkelse på 5–10 år — noe som betyr at en endelig vurdering av KIs produktivitetseffekt sannsynligvis ligger flere år frem i tid.
+
+\newpage
+
+# Appendiks
+
+## A1: Difference-in-differences med lang produktivitetsserie
+
+Standard panel FE utnytter kun de tre årene med KI-data. GVA og sysselsetting er imidlertid tilgjengelig tilbake til 2010, noe som gir 14 år med produktivitetsdata. Denne asymmetrien kan potensielt utnyttes i et kontinuerlig difference-in-differences-design (Callaway et al., 2024).
+
+Behandlingsintensiteten defineres som gjennomsnittlig endring i KI-adopsjon fra 2021 til 2024 per sektor ($\Delta \overline{\text{KI}}_i$). Post-perioden er 2023--2024. Spesifikasjonen er:
+
+$$\ln LP_{ict} = \alpha_{ic} + \tau_t + \beta(\Delta \overline{\text{KI}}_i \times \text{Post}_t) + \varepsilon_{ict}$$
+
+```{r did-appendiks}
+prod_long <- gva_clean %>%
+  inner_join(emp_clean, by = c("country", "industry", "year")) %>%
+  filter(gva > 0, hours > 0, year >= 2010, year <= 2024,
+         country != "LU", industry %in% industry_keep) %>%
+  mutate(ln_lp = log(gva / hours),
+         id = paste(country, industry, sep = "_"))
+
+ai_change <- ai_model %>%
+  filter(year %in% c(2021, 2024), !is.na(ai_adopt)) %>%
+  group_by(industry, year) %>%
+  summarise(ai_mean = mean(ai_adopt, na.rm = TRUE), .groups = "drop") %>%
+  pivot_wider(names_from = year, values_from = ai_mean) %>%
+  mutate(ai_change = `2024` - `2021`) %>%
+  select(industry, ai_change) %>%
+  filter(!is.na(ai_change))
+
+prod_did <- prod_long %>%
+  inner_join(ai_change, by = "industry") %>%
+  mutate(post_gpt = as.integer(year >= 2023),
+         treat_x_post = ai_change * post_gpt)
+
+did_main <- feols(ln_lp ~ treat_x_post | id + year,
+                  data = prod_did, cluster = ~id)
+summary(did_main)
+```
+
+DiD-koeffisienten er positiv og signifikant ($p \approx 0{,}01$). Imidlertid avslører placebo-tester og trendkorreksjon at resultatet er problematisk:
+
+```{r did-placebo}
+# Placebo: falsk behandling i 2018
+prod_pre <- prod_did %>% filter(year <= 2022) %>%
+  mutate(fake_post = as.integer(year >= 2018),
+         fake_treat = ai_change * fake_post)
+
+placebo_2018 <- feols(ln_lp ~ fake_treat | id + year,
+                      data = prod_pre, cluster = ~id)
+
+# Trendkorreksjon
+pre_trends <- prod_did %>%
+  filter(year >= 2017, year <= 2022) %>%
+  group_by(id) %>%
+  summarise(pre_trend = coef(lm(ln_lp ~ year))[2], .groups = "drop")
+
+prod_did_trend <- prod_did %>%
+  left_join(pre_trends, by = "id") %>%
+  mutate(trend_x_post = pre_trend * post_gpt)
+
+did_trend <- feols(ln_lp ~ treat_x_post + trend_x_post | id + year,
+                   data = prod_did_trend, cluster = ~id)
+
+etable(did_main, placebo_2018, did_trend,
+       headers = c("DiD", "Placebo 2018", "Trendkorrigert"),
+       fitstat = c("n", "r2", "wr2"))
+```
+
+Placebo-testen gir en signifikant koeffisient — allerede før ChatGPT ville $\Delta\text{KI}$ predikert differensiell produktivitetsendring. Etter trendkorreksjon faller KI-koeffisienten til insignifikans. Konklusjonen er at sektorer som adopterer KI raskt ikke er sammenlignbare med sektorer som adopterer sakte — de er på ulike produktivitetsbaner allerede før KI er tilgjengelig. Funnet er like fullt informativt: det viser at den positive assosiasjonen i SFA og FE delvis reflekterer at teknologisk dynamiske sektorer både adopterer ny teknologi raskere og har sterkere produktivitetsvekst av andre grunner.
+
+## A2: Event study for pre-trender
+
+```{r es-appendiks, fig.height = 4}
+es_model <- feols(
+  ln_lp ~ i(year, ai_change, ref = 2022) | id + year,
+  data = prod_did, cluster = ~id
+)
+
+iplot(es_model,
+      xlab = "Year", ylab = "Koeffisient",
+      main = "Event study: KI-adopsjonsvekst og arbeidsproduktivitet")
+abline(v = 2022.5, lty = 2, col = "red")
+```
+
+Pre-periode-koeffisientene for 2017--2022 er nær null og ikke signifikant forskjellige fra referanseåret. For de tidligste årene (2010--2015) er koeffisientene negative og delvis signifikante, noe som reflekterer konvergensen dokumentert i seksjon 4.4.
+
+## A3: Pooled OLS (referansepunkt)
+
+```{r ols-appendiks}
+ols_pooled <- feols(
+  ln_lp ~ ai_adopt + kl_ratio,
+  data = sfa_panel,
+  cluster = ~country
+)
+
+etable(ols_pooled, fe_intensity,
+       headers = c("Pooled OLS", "Panel FE"),
+       fitstat = c("n", "r2"))
+```
+
+Pooled OLS gir en vesentlig sterkere KI-koeffisient ($\hat{\beta} \approx 0{,}018$) enn panel FE ($\hat{\beta} \approx 0{,}005$). Forskjellen illustrerer omitted variable bias: sektorer med høy KI har høy produktivitet av mange grunner utover KI. De faste effektene kontrollerer for tidskonstante forskjeller.
+
+## A4: Fullstendig variabeloversikt
+
+Se vedlagt tabell over alle 63 indikatorer i Eurostats `isoc_eb_ain2`-tabell.
+
+# Referanser

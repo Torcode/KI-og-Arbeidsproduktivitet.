@@ -1,0 +1,316 @@
+---
+title: "third_code_draft"
+author: "Torkild"
+format: pdf
+editor: visual
+---
+
+# Info
+
+Formålet med denne quatroen er å lage noe nice å knitbart som vi legger i hovedverket senere.
+
+\newpage
+
+# Data
+
+**-Beskrivelse**
+
+```{r Biblotek}
+#Libraries 
+
+
+library(eurostat)   # henter data direkte fra Eurostat
+library(dplyr)      # filtrering, mutering, joins
+library(tidyr)      # omforming og håndtering av manglende verdier
+library(stringr)    # strenghåndtering, nyttig ved NACE-koder
+library(janitor)    # clean_names() og ryddigere datastruktur
+library(ggplot2)    # enkle deskriptive figurer
+library(knitr)      # kable()-tabeller i Quarto
+library(readr)      # evt. lagring/innlesing av lokale filer
+library(here)       # robuste filstier i prosjektmappe
+
+
+
+
+```
+
+Datagrunnlaget for oppgaven henter fra Eurostats. Eurostat er EUs statistiske kontor og koordinerer innsamlingen av statistikk fra de nasjonale statistikkbyråene i medlemsland og assosierte land. I oppgaven bruker vi fire tabeller som dekker; KI-adopsjon i foretak, brutto verdiskapning, sysselsetting og kapitalbeholdning - alle etter næring og land som vi ønsker å kobles på felles nøkler (land, NACE Rev. 2-næringskode og år) til et paneldatasett for økonometrisk analyse.
+
+Alle tabeller hentes direkte via Eurostats API gjennom R-pakken `eurostat` (Lahti et al., 2017). De påfølgende avsnittene presenterer hver tabell, dokumenterer variabelvalg og viser den faktiske strukturen i dataene.
+
+| Tabell         | Innhold                   | Hovedvariabel | Enhet      |
+|----------------|---------------------------|---------------|------------|
+| isoc_eb_ain2   | KI-adopsjon i foretak     | E_AI_TANY     | PC_ENT     |
+| nama_10_a64    | Brutto verdiskaping (GVA) | B1G           | CLV20_MEUR |
+| nama_10_a64_e  | Arbeidsinnsats            | EMP_DC        | THS_HW     |
+| nama_10_nfa_st | Kapitalbeholdning         | N11N          | CLV20_MEUR |
+
+## KI-adopsjon: isoc_eb_ain2
+
+Datasettet inngår i den årlige felleskapsundersøkelsen om IKT-bruk i foretak. IKT-undersøkelsen har vært gjennomført årlig siden 2002 og ble utvidet med et eget modulsett for kunstig intelligens fra og med 2021-undersøkelsen.
+
+```{r}
+ai_raw <- get_eurostat("isoc_eb_ain2", time_format = "num")
+saveRDS(ai_raw, "data/ai_raw.rds")
+```
+
+Tabellen er et flerdimensjonalt datasett der hver observasjon er definert av seks dimensjoner:
+
+```{r}
+cat("Dimensjoner:\n")
+cat("  freq:     ", paste(unique(ai_raw$freq), collapse=", "), "\n")
+cat("  size_emp: ", paste(unique(ai_raw$size_emp), collapse=", "), "\n")
+cat("  nace_r2:  ", length(unique(ai_raw$nace_r2)), "næringskoder\n")
+cat("  indic_is: ", length(unique(ai_raw$indic_is)), "indikatorer\n")
+cat("  unit:     ", paste(unique(ai_raw$unit), collapse=", "), "\n")
+cat("  geo:      ", length(unique(ai_raw$geo)), "geografiske enheter\n")
+cat("  År:       ", paste(sort(unique(ai_raw$TIME_PERIOD)), collapse=", "), "\n")
+```
+
+Frekvensen er årlig (`A`) og størrelsesklassen er utelukkende foretak med ti eller flere ansatte (`GE10`). Disse to dimensjonene er konstante og kan fjernes. Variabelen `values` inneholder den observerte verdien for den aktuelle kombinasjonen av dimensjoner
+
+```{r}
+ai_full <- ai_raw %>%
+  rename(
+    country      = geo,
+    industry     = nace_r2,
+    year         = TIME_PERIOD,
+    ai_indicator = indic_is,
+    measure_unit = unit,
+    value        = values
+  ) %>%
+  select(-freq, -size_emp)
+```
+
+### Indikatorer og måleenheter
+
+Tabellen inneholder 63 indikatorer som dekker fire dimensjoner av KI-bruk: hvilke teknologier foretakene benytter (for eksempel språkgenerering, maskinlæring, bildegjenkjenning), hvilke formål KI brukes til (markedsføring, produksjon, administrasjon, logistikk), hvordan teknologien er anskaffet (egenutviklet, kommersiell, åpen kildekode) og barrierer mot adopsjon (kostnader, kompetansemangel, personvern).
+
+```{r}
+print(ai_full %>%
+  count(measure_unit, sort = TRUE))
+```
+
+```{r}
+summary(ai_full)
+```
+
+Måleenhetene uttrykker andeler med ulike referansepopulasjoner. `PC_ENT` er andelen av *alle* foretak med ti eller flere ansatte — den bredeste og mest sammenlignbare referansen. `PC_ENT_AI_TANY` er andelen blant foretak *som allerede bruker KI*. `PC_ENT_IUSE` bruker foretak med internettilgang som nevner. I denne analysen brukes gjennomgående **PC_ENT**.
+
+Hovedindikatoren er **E_AI_TANY**: andelen foretak som bruker *minst én* av de definerte KI-teknologiene. Denne fanger den ekstensive marginen — om foretaket i det hele tatt bruker KI. Den komplementære indikatoren E_AI_TX fanger andelen som ikke bruker noen KI.
+
+Hovedindikatoren er **E_AI_TANY**: andelen foretak som bruker *minst én* av de definerte KI-teknologiene. Denne fanger den ekstensive marginen — om foretaket i det hele tatt bruker KI. Den komplementære indikatoren E_AI_TX fanger andelen som ikke bruker noen KI.
+
+```{r}
+ai_model <- ai_full %>%
+  filter(
+    !country %in% c("EU27_2020", "EA", "EA12", "EA19", "EA20", "EA21"),
+    ai_indicator == "E_AI_TANY",
+    measure_unit == "PC_ENT"
+  ) %>%
+  select(country, industry, year, value) %>%
+  rename(ai_adopt = value)
+
+cat("Observasjoner: ", nrow(ai_model), "\n")
+cat("Land:          ", n_distinct(ai_model$country), "\n")
+cat("Næringskoder:  ", n_distinct(ai_model$industry), "\n")
+cat("År:            ", paste(sort(unique(ai_model$year)), collapse=", "), "\n")
+```
+
+Etter filtrering på E_AI_TANY og PC_ENT, og etter fjerning av EU- og eurosone-aggregater, gjenstår 34 land.
+
+**Tidsstruktur**
+
+Tabellen inneholder data for referanseårene 2021, 2023, 2024 og 2025. Året 2022 er ikke tilgjengelig — KI-modulen ble inkludert i 2021-undersøkelsen, utelatt fra 2022-undersøkelsen og gjenopptatt som fast modul fra 2023.Tidssavstanden mellom de to første observasjonene er dermed to år (2021-2023), mens de påfølgende intervallene er ett år.
+
+**Næringskoder**
+
+Variabelen `industry` inneholder 50 NACE-koder fordelt på fire aggregeringsnivåer: brede seksjonskoder (C, D, G), mellomaggregater (C-E, C10-C18), detaljerte næringsgrupper (C10-C12, G45, J62_J63) og spesialaggregater (ICT, C10-S951_X_K). Disse nivåene overlapper — C er lik summen av C10-C12, C13-C15, ..., C31-C33.
+
+```{r}
+sort(unique(ai_model$industry))
+```
+
+For økonometrisk analyse kreves et sett næringer som er gjensidig utelukkende. Å inkludere både C og C10-C12 ville innebære dobbeltregning av industrisektoren. Utvalget av næringer diskuteres i avsnitt 3.5 etter at alle fire tabeller er presentert. Til slutt er en annen avgrensing at finanssektoren (NACE K) er ekskludert fra IKT-datasettene.
+
+```{r}
+summary(ai_model)
+```
+
+**KI-adopsjon: hovedtrekk**
+
+Gjennomsnittlig KI-adopsjon øker moderat fra 2021 til 2023 og markant fra 2023 til 2024. Denne akselerasjonen kan dekomponeres på teknologitype. Tabellen viser utviklingen for industrisektoren samlet (NACE C):
+
+```{r}
+ai_model %>%
+  filter(!is.na(ai_adopt)) %>%
+  group_by(year) %>%
+  summarise(
+    n = n(),
+    gjennomsnitt = round(mean(ai_adopt, na.rm = TRUE), 1),
+    median = round(median(ai_adopt, na.rm = TRUE), 1),
+    std = round(sd(ai_adopt, na.rm = TRUE), 1)
+  )
+```
+
+```{r}
+ai_tech <- ai_full %>%
+  filter(
+    !country %in% c("EU27_2020", "EA"),
+    measure_unit == "PC_ENT",
+    industry == "C",
+    ai_indicator %in% c("E_AI_TANY", "E_AI_TNLG", "E_AI_TTM",
+                         "E_AI_TML", "E_AI_TPA", "E_AI_TAR")
+  ) %>%
+  group_by(year, ai_indicator) %>%
+  summarise(gjennomsnitt = round(mean(value, na.rm = TRUE), 1), .groups = "drop") %>%
+  pivot_wider(names_from = year, values_from = gjennomsnitt)
+
+ai_tech
+```
+
+Vi ser et hopp i utviklingen i de fleste KI-teknologiene.
+
+**Mulige problemmer**
+
+- Over 1000 na's
+
+- Mengden ligger sikkert i Luxemburg
+
+## Brutto verdiskapning: nama_10_a64
+
+Output måles som brutto verdiskaping (GVA) fra Eurostats nasjonalregnskapstabell *nama_10_a64* (Annual national accounts by 64 branches). Tabellen inneholder detaljerte nasjonalregnskapsdata etter næring og er en del av European System of Accounts (ESA 2010).
+
+```{r}
+gva_raw <- get_eurostat("nama_10_a64", time_format = "num")
+saveRDS(gva_raw, "data/gva_raw.rds")
+
+cat("Dimensjoner:\n")
+cat("  na_item: ", paste(sort(unique(gva_raw$na_item)), collapse=", "), "\n")
+cat("  unit:    ", length(unique(gva_raw$unit)), "enheter\n")
+cat("  nace_r2: ", length(unique(gva_raw$nace_r2)), "næringskoder\n")
+cat("  geo:     ", length(unique(gva_raw$geo)), "land\n")
+cat("  År:      ", min(gva_raw$TIME_PERIOD), "-", max(gva_raw$TIME_PERIOD), "\n")
+```
+
+Tabellen inneholder flere nasjonalregnskapsstørrelser:
+
+```{r}
+sort(unique(gva_raw$na_item))
+```
+
+Variabelen **B1G** gir brutto verdiskaping, definert som bruttoproduksjon (P1) minus produktinnsats (P2). GVA representerer verdien som skapes i selve produksjonsprosessen og er det foretrukne outputmålet for produktivitetsanalyse fordi det — i motsetning til bruttoproduksjon — ikke blåses opp av mellomprodukthandel.
+
+Tabellen tilbyr GVA i en rekke prisenheter:
+
+```{r}
+gva_raw %>%
+  filter(na_item == "B1G") %>%
+  count(unit, sort = TRUE) %>%
+  head(8)
+```
+
+I denne analysen brukes **CLV20_MEUR**: *chained volumes*(kjedede volumer?) i millioner euro med 2020 som referanseår. Kjedede volumer korrigerer for prisendringer over tid og muliggjør sammenligning mellom land i en felles valuta. Alternativet CP_MEUR (løpende priser) ville blande priseffekter med volumeffekter og er uegnet for produktivitetsmåling.
+
+```{r}
+gva_clean <- gva_raw %>%
+  rename(country = geo, industry = nace_r2, year = TIME_PERIOD, value = values) %>%
+  filter(
+    !country %in% c("EU27_2020", "EA", "EA12", "EA19", "EA20", "EA21"),
+    na_item == "B1G",
+    unit == "CLV20_MEUR"
+  ) %>%
+  # Harmoniser D → D35 og L → L68 (identiske verdier, verifisert)
+  mutate(industry = case_when(
+    industry == "D" ~ "D35",
+    industry == "L" ~ "L68",
+    TRUE ~ industry
+  )) %>%
+  distinct(country, industry, year, .keep_all = TRUE) %>%
+  select(country, industry, year, value) %>%
+  rename(gva = value) %>%
+  filter(!is.na(gva))
+
+cat("GVA observasjoner: ", nrow(gva_clean), "\n")
+cat("Land:              ", n_distinct(gva_clean$country), "\n")
+cat("År:                ", min(gva_clean$year), "-", max(gva_clean$year), "\n")
+```
+
+Tabellen dekker perioden 1975–2025, men tilgjengeligheten for de siste årene varierer. For 2024 rapporterer 33 land. For 2025 har kun Malta rapportert ved skrivingstidspunktet.
+
+Et teknisk poeng er harmoniseringen av næringskodene D og D35 samt L og L68. KI-tabellen bruker de detaljerte kodene D35 (elektrisitet, gass og varmtvannsforsyning) og L68 (omsetning og drift av fast eiendom), mens nasjonalregnskapstabellen i noen tilfeller rapporterer de bredere seksjonskodene D og L. Fordi seksjon D kun inneholder næring D35 og seksjon L kun inneholder L68, er verdiene identiske — dette er verifisert for alle land. I datakonstruksjonen kodes D om til D35 og L til L68, etterfulgt av deduplisering for å unngå dobbeltregistrering i land der begge koder rapporteres.
+
+```{r}
+summary(gva_clean)
+```
+
+**mulige problemer**
+
+- Sjekke harmonisering mot ai_model og ha samme industry
+
+- Mangler sikkert data på andre siden av tidsskalaen også. Kanskje starte fra 2010 ellerno
+
+- Det er virkelig i modelens interesse at vi kutter 2025?
+
+## Arbeidsinnsats (sysselsetting): nama_10_a64_e
+
+Arbeidsinnsats hentes fra Eurostats tabell *nama_10_a64_e* (National accounts employment data by 64 branches). Tabellen inneholder tre typer arbeidsmål fordelt på tre telleenheter.
+
+```{r}
+emp_raw <- get_eurostat("nama_10_a64_e", time_format = "num")
+saveRDS(emp_raw, "data/emp_raw.rds")
+
+cat("Arbeidsmål (na_item):\n")
+print(sort(unique(emp_raw$na_item)))
+cat("\nTelleenheter (unit):\n")
+print(sort(unique(emp_raw$unit)))
+```
+
+Arbeidsmålene er EMP_DC (total sysselsetting, domestic concept), SAL_DC (lønnsmottakere) og SELF_DC (selvstendig næringsdrivende). Telleenhetene er THS_PER (tusen personer), THS_JOB (tusen jobber) og THS_HW (tusen timeverk), i tillegg til prosentvise endringsrater.
+
+I denne analysen brukes **EMP_DC** (total sysselsetting) med **THS_HW** (tusen timeverk). Timeverk foretrekkes som mål på faktisk arbeidsinput. Antall sysselsatte skiller ikke mellom heltid og deltid, og antall jobber fanger ikke opp forskjeller i arbeidstid mellom land og sektorer. For eksempel jobber ansatte i norsk industri gjennomsnittlig færre timer enn ansatte i polsk industri — en forskjell som reflekteres i timeverksmålet men ikke i persontallet.
+
+Arbeidsproduktiviteten beregnes deretter som $LP_{ict} = GVA_{ict} / L_{ict}$, der $L$ er timeverk.
+
+```{r}
+emp_clean <- emp_raw %>%
+  rename(country = geo, industry = nace_r2, year = TIME_PERIOD, value = values) %>%
+  filter(
+    !country %in% c("EU27_2020", "EA", "EA12", "EA19", "EA20", "EA21"),
+    na_item == "EMP_DC",
+    unit == "THS_HW"
+  ) %>%
+  mutate(industry = case_when(
+    industry == "D" ~ "D35",
+    industry == "L" ~ "L68",
+    TRUE ~ industry
+  )) %>%
+  distinct(country, industry, year, .keep_all = TRUE) %>%
+  select(country, industry, year, value) %>%
+  rename(hours = value) %>%
+  filter(!is.na(hours))
+
+cat("EMP observasjoner: ", nrow(emp_clean), "\n")
+cat("Land:              ", n_distinct(emp_clean$country), "\n")
+```
+
+```{r}
+summary(emp_clean)
+```
+
+## Kapitalbeholdning: nama_10nfa_st
+
+Kapitalbeholdningen hentes fra Eurostats tabell *nama_10_nfa_st* (Annual sector accounts — non-financial assets by industry), som inneholder data om beholdningen av ikke-finansielle aktiva etter aktivatype, næring og land. Tabellen er del av nasjonalregnskapet under ESA 2010 og dekker perioden 1975–2024.
+
+```{r}
+cap_raw <- get_eurostat("nama_10_nfa_st", time_format = "num")
+saveRDS(cap_raw, "data/cap_raw.rds")
+
+cat("Dimensjoner:\n")
+cat("  asset10: ", length(unique(cap_raw$asset10)), "aktivatyper\n")
+cat("  unit:    ", length(unique(cap_raw$unit)), "enheter\n")
+cat("  nace_r2: ", length(unique(cap_raw$nace_r2)), "næringskoder\n")
+cat("  geo:     ", length(unique(cap_raw$geo)), "land\n")
+cat("  År:      ", min(cap_raw$TIME_PERIOD, na.rm = TRUE), "-",
+    max(cap_raw$TIME_PERIOD, na.rm = TRUE), "\n")
+```
